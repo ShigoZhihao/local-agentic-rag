@@ -275,4 +275,4 @@ Weaviate  ← 保存 + HNSW/BM25 検索のみ
 
 ## License
 
-Private — internal use only.
+[MIT License](LICENSE)
