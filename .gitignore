@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# 環境変数
+.env
+
+# データディレクトリ（大容量ファイル）
+data/raw/
+data/rendered/
+
+# モデルキャッシュ
+.cache/
+models/
+
+# ColBERTインデックス
+.ragatouille/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# テスト
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Streamlit
+.streamlit/secrets.toml
+
+# ColBERT index
+data/colbert_index/
+
+# ログ
+*.log
+logs/
+
+# Claude Code
+.claude/
+
+# 参考資料PDF（公開しない）
+.reference/

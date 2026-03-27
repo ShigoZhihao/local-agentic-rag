@@ -1,0 +1,91 @@
+ollama:
+  base_url: "http://127.0.0.1:11434/v1"
+  planner_model: "qwen2.5:9b"   # Facilitator / Validator
+  executor_model: "qwen2.5:2b"  # Synthesizer
+  temperature: 0.2
+  max_tokens: 2048
+
+vision:
+  base_url: "http://127.0.0.1:11434/v1"
+  model_name: "qwen3-vl:8b"  # (取込時のみ使用)
+  max_tokens: 1024
+  dpi: 200  # PDF/PPTXレンダリング解像度
+
+embeddings:
+  model_name: "BAAI/bge-m3"
+  device: "cuda"  # RTX A4000 GPU加速
+  batch_size: 32
+  dimension: 1024
+
+weaviate:
+  host: "localhost"
+  port: 8080
+  grpc_port: 50051
+  collection_name: "Documents"
+
+chunking:
+  # ファイル種類ごとのデフォルト戦略
+  # txt/md -> recursive, html -> html, py -> python,
+  # semantic -> semantic, example collections -> example,
+  # pdf/pptx -> visual
+  default_strategy: "recursive"
+  recursive:
+    chunk_size: 512
+    overlap_percent: 0  # 初期0%。必要に応じて増やす
+    separators: ["\n\n", "\n", ". ", " "]
+  html:
+    tags_to_split: ["p", "h1", "h2", "h3", "h4", "li"]
+  python:
+    split_on: ["def ", "class "]
+    include_decorator: true
+  semantic:
+    cosine_threshold: 0.75
+    min_chunk_size: 100
+    max_chunk_size: 1000
+  example:
+    delimiter: "---"  # 事例コレクション内の区切り文字
+  visual:
+    one_chunk_per_page: true  # PDF/PPTXは1ページ=1チャンク
+
+retrieval:
+  bm25:
+    k1: 1.2   # 単語頻度の飽和制御 (通常1.2-2.0)
+    b: 0.75   # 文書長正規化 (0=なし, 1=完全)
+    top_k: 20
+  semantic:
+    top_k: 20
+    distance_metric: "cosine"
+  hybrid:
+    alpha: 0.5  # 0=BM25のみ, 1=Semanticのみ
+    top_k: 20
+  colbert:
+    enabled: false  # オンデマンドで有効化
+    model_name: "colbert-ir/colbertv2.0"
+    top_k: 10
+
+reranking:
+  model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  top_k: 5   # Re-rank後に返す件数
+  batch_size: 16
+
+agents:
+  max_loop_count: 3  # Validator→Facilitatorの最大ループ回数
+  validation_threshold: 80  # Validator合格ライン (平均スコア)
+  facilitator:
+    model: "planner"  # qwen3.5-27b
+  synthesizer:
+    model: "executor"  # qwen3.5-9b
+  validator:
+    model: "planner"  # qwen3.5-27b
+    scoring_criteria:
+      - "completeness"   # enriched promptの全要件カバー
+      - "accuracy"       # 引用元テキストとの整合性
+      - "relevance"      # ユーザ元意図との関連性
+      - "faithfulness"   # 引用外情報の生成がないか
+
+evaluation:
+  metrics: ["precision@5", "recall@10", "map@10", "mrr@10"]
+  bm25_tuning:
+    k1_range: [0.5, 0.75, 1.0, 1.2, 1.5, 2.0]
+    b_range: [0.0, 0.25, 0.5, 0.75, 1.0]
+    optimize_metric: "map@10"

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-system"
+version = "0.1.0"
+description = "Agentic RAG System - local-only, OSS"
+requires-python = ">=3.12"
+dependencies = [
+    # Vector DB
+    "weaviate-client>=4.9",
+    # Embeddings
+    "sentence-transformers>=3.3",
+    # LLM Client (LM Studio compatible)
+    "openai>=1.50",
+    # Agent Graph
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    # Chunking
+    "langchain-text-splitters>=0.3",
+    "beautifulsoup4>=4.12",
+    # PDF / PPTX
+    "pymupdf>=1.24",
+    "python-pptx>=1.0",
+    # Config / Data Models
+    "pyyaml>=6.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    # Evaluation
+    "ranx>=0.3",
+    # UI
+    "streamlit>=1.40",
+    # ColBERT (optional, may need Python 3.12 workaround)
+    # "ragatouille>=0.0.9",
+    # Re-ranker (included in sentence-transformers)
+    # Testing
+    "pytest>=8.0",
+    "pytest-mock>=3.14",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
