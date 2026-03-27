@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def _format_citations(citations: list[Citation]) -> str:
     """Format citations for the validator prompt."""
     if not citations:
-        return "（引用情報なし — 直接回答）"
+        return "(No citation information — direct answer)"
     lines: list[str] = []
     for cit in citations:
         page_info = f" (p.{cit.page_number})" if cit.page_number else ""
@@ -108,7 +108,7 @@ def run(state: RAGState) -> RAGState:
     relevance = int(result.get("relevance", 0))
     faithfulness = int(result.get("faithfulness", 0))
     average = float(result.get("average", (completeness + accuracy + relevance + faithfulness) / 4))
-    reason = result.get("reason", "評価結果の解析に失敗しました")
+    reason = result.get("reason", "Failed to parse evaluation result")
     missing_info: list[str] = result.get("missing_info", [])
 
     # Force pass at max loops
@@ -117,7 +117,7 @@ def run(state: RAGState) -> RAGState:
     is_valid = is_valid_by_score or force_pass
 
     if force_pass and not is_valid_by_score:
-        reason = f"[最大ループ到達 ({max_loops}回)] " + reason
+        reason = f"[Max loops reached ({max_loops})] " + reason
         logger.warning(
             "Validator: max loops reached (%d), forcing pass. avg=%.1f",
             max_loops, average,

@@ -18,8 +18,8 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 _EXAMPLE_JSONL = """\
-{"query": "ログ設定の方法", "relevant_ids": ["chunk-001", "chunk-002"]}
-{"query": "認証エラーの対処法", "relevant_ids": ["chunk-010"]}"""
+{"query": "How to configure logging", "relevant_ids": ["chunk-001", "chunk-002"]}
+{"query": "How to handle authentication errors", "relevant_ids": ["chunk-010"]}"""
 
 
 def _parse_eval_data(text: str) -> tuple[list[str], list[set[str]]]:
@@ -47,25 +47,25 @@ def _parse_eval_data(text: str) -> tuple[list[str], list[set[str]]]:
 
 def render() -> None:
     """Render the BM25 Tuning page."""
-    st.title("🎛️ BM25 パラメーター チューニング")
-    st.caption("k1・bの最適値をグリッドサーチで探索します。評価クエリとその正解チャンクIDが必要です。")
+    st.title("🎛️ BM25 Parameter Tuning")
+    st.caption("Search for optimal k1 and b values using grid search. Evaluation queries and their ground-truth chunk IDs are required.")
 
     # Evaluation data input
-    st.subheader("1. 評価データ (JSONL)")
+    st.subheader("1. Evaluation Data (JSONL)")
     eval_text = st.text_area(
-        "各行: {\"query\": \"...\", \"relevant_ids\": [\"...\", ...]}",
+        "Each line: {\"query\": \"...\", \"relevant_ids\": [\"...\", ...]}",
         value=_EXAMPLE_JSONL,
         height=200,
     )
 
     queries, relevant_ids = _parse_eval_data(eval_text)
     if queries:
-        st.success(f"{len(queries)} クエリを読み込みました。")
+        st.success(f"{len(queries)} query/queries loaded.")
     else:
-        st.warning("有効なクエリが見つかりません。")
+        st.warning("No valid queries found.")
 
     # Config display
-    with st.expander("📋 グリッド設定 (config.yaml)"):
+    with st.expander("📋 Grid Settings (config.yaml)"):
         from src.config import get_config
         cfg = get_config().evaluation.bm25_tuning
         st.json({
@@ -78,11 +78,11 @@ def render() -> None:
     st.divider()
 
     if not queries:
-        st.info("評価データを入力してからチューニングを開始してください。")
+        st.info("Please enter evaluation data before starting the tuning.")
         return
 
     # Run tuning
-    if st.button("チューニング開始", type="primary"):
+    if st.button("Start tuning", type="primary"):
         _run_tuning(queries, relevant_ids)
 
     # Display previous results if stored
@@ -102,7 +102,7 @@ def _run_tuning(queries: list[str], relevant_ids: list[set[str]]) -> None:
 
     def on_progress(iteration: int, total: int, k1: float, b: float) -> None:
         progress_bar.progress(iteration / total)
-        status_text.info(f"テスト中 {iteration}/{total}: k1={k1:.2f}, b={b:.2f}")
+        status_text.info(f"Testing {iteration}/{total}: k1={k1:.2f}, b={b:.2f}")
 
     tuner = BM25Tuner(
         queries,
@@ -111,16 +111,16 @@ def _run_tuning(queries: list[str], relevant_ids: list[set[str]]) -> None:
         progress_callback=on_progress,
     )
 
-    with st.spinner(f"{total_combos} パラメーター組み合わせをテスト中..."):
+    with st.spinner(f"Testing {total_combos} parameter combinations..."):
         try:
             report = tuner.run()
             st.session_state.tuning_report = report
-            status_text.success("チューニング完了！")
+            status_text.success("Tuning complete!")
             progress_bar.progress(1.0)
             _display_results(report)
         except Exception as exc:
             logger.error("Tuning failed: %s", exc, exc_info=True)
-            st.error(f"チューニングエラー: {exc}")
+            st.error(f"Tuning error: {exc}")
 
 
 def _display_results(report) -> None:
@@ -128,22 +128,22 @@ def _display_results(report) -> None:
     import pandas as pd
 
     if not report.results:
-        st.warning("結果がありません。")
+        st.warning("No results available.")
         return
 
-    st.subheader("2. 結果")
+    st.subheader("2. Results")
 
     # Best result callout
     if report.best:
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("最適 k1", f"{report.best.k1:.2f}")
+            st.metric("Best k1", f"{report.best.k1:.2f}")
         with col2:
-            st.metric("最適 b", f"{report.best.b:.2f}")
+            st.metric("Best b", f"{report.best.b:.2f}")
         with col3:
             from src.config import get_config
             metric = get_config().evaluation.bm25_tuning.optimize_metric
-            st.metric(f"最良 {metric}", f"{report.best.optimize_metric:.4f}")
+            st.metric(f"Best {metric}", f"{report.best.optimize_metric:.4f}")
 
     # Results table
     records = report.as_records()
@@ -151,7 +151,7 @@ def _display_results(report) -> None:
     st.dataframe(df.sort_values("map@10", ascending=False), use_container_width=True)
 
     # Apply best button
-    if report.best and st.button("最適パラメーターを適用してコレクションを再作成"):
+    if report.best and st.button("Apply best parameters and recreate collection"):
         _apply_best_params(report.best.k1, report.best.b)
 
 
@@ -160,12 +160,12 @@ def _apply_best_params(k1: float, b: float) -> None:
     try:
         from src.retrieval.weaviate_client import get_client, ensure_collection
         client = get_client()
-        with st.spinner("コレクションを再作成中..."):
+        with st.spinner("Recreating collection..."):
             ensure_collection(client, bm25_k1=k1, bm25_b=b, recreate=True)
         client.close()
         st.success(
-            f"✅ コレクションを再作成しました (k1={k1:.2f}, b={b:.2f})。"
-            "ドキュメントを再取り込みしてください。"
+            f"✅ Collection recreated (k1={k1:.2f}, b={b:.2f}). "
+            "Please re-ingest your documents."
         )
     except Exception as exc:
-        st.error(f"パラメーター適用エラー: {exc}")
+        st.error(f"Parameter application error: {exc}")

@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 def _format_citations(citations: list[Citation]) -> str:
     """Format citations as a numbered reference list for the prompt."""
     if not citations:
-        return "（引用情報なし）"
+        return "(No citation information)"
     lines: list[str] = []
     for cit in citations:
         page_info = f" (p.{cit.page_number})" if cit.page_number else ""

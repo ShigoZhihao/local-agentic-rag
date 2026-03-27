@@ -37,43 +37,43 @@ def _get_collection_stats() -> dict:
 
 def render() -> None:
     """Render the Ingest page."""
-    st.title("📥 ドキュメント取り込み")
+    st.title("📥 Document Ingestion")
 
     # Sidebar settings
     with st.sidebar:
-        st.subheader("取り込み設定")
+        st.subheader("Ingestion Settings")
         use_vision = st.checkbox(
-            "Vision LLM を使用 (PDF/PPTX)",
+            "Use Vision LLM (PDF/PPTX)",
             value=False,
-            help="スライド画像をVision LLMで説明文に変換します。LM StudioにVisionモデルが必要です。",
+            help="Converts slide images into text descriptions using the Vision LLM. Requires a Vision model in LM Studio.",
         )
-        st.caption("⚠️ Visionは取り込みが遅くなります")
+        st.caption("⚠️ Vision mode slows down ingestion")
 
     # Collection stats
-    with st.expander("📊 Weaviate コレクション情報", expanded=True):
+    with st.expander("📊 Weaviate Collection Info", expanded=True):
         stats = _get_collection_stats()
         if stats["error"]:
-            st.error(f"Weaviate接続エラー: {stats['error']}")
-            st.info("Docker Desktop を起動して `docker compose up -d` を実行してください。")
+            st.error(f"Weaviate connection error: {stats['error']}")
+            st.info("Start Docker Desktop and run `docker compose up -d`.")
         else:
-            st.metric("インデックス済みチャンク数", stats["count"])
+            st.metric("Indexed chunk count", stats["count"])
 
     st.divider()
 
     # File upload
     uploaded_files = st.file_uploader(
-        "ファイルをドラッグ&ドロップ (複数可)",
+        "Drag & drop files here (multiple files supported)",
         type=SUPPORTED_TYPES,
         accept_multiple_files=True,
     )
 
     if not uploaded_files:
-        st.info("対応ファイル: .txt, .md, .html, .py, .pdf, .pptx")
+        st.info("Supported files: .txt, .md, .html, .py, .pdf, .pptx")
         return
 
-    st.write(f"{len(uploaded_files)} ファイルが選択されました。")
+    st.write(f"{len(uploaded_files)} file(s) selected.")
 
-    if st.button("取り込み開始", type="primary"):
+    if st.button("Start ingestion", type="primary"):
         _run_ingestion(uploaded_files, use_vision=use_vision)
 
 
@@ -99,7 +99,7 @@ def _run_ingestion(uploaded_files, *, use_vision: bool) -> None:
 
         try:
             for i, uploaded_file in enumerate(uploaded_files):
-                status_text.info(f"処理中: {uploaded_file.name} ({i+1}/{total})")
+                status_text.info(f"Processing: {uploaded_file.name} ({i+1}/{total})")
                 progress_bar.progress((i) / total)
 
                 # Save to temp file
@@ -122,19 +122,19 @@ def _run_ingestion(uploaded_files, *, use_vision: bool) -> None:
         finally:
             pipeline.close()
 
-        status_text.success("取り込み完了！")
+        status_text.success("Ingestion complete!")
         progress_bar.progress(1.0)
 
         # Display results
         with results_container:
-            st.subheader("結果")
+            st.subheader("Results")
             for name, stats in all_stats:
                 if stats.failed_files > 0:
-                    st.error(f"❌ {name}: エラー — {stats.errors[0][1] if stats.errors else '不明'}")
+                    st.error(f"❌ {name}: Error — {stats.errors[0][1] if stats.errors else 'Unknown'}")
                 else:
-                    st.success(f"✅ {name}: {stats.total_chunks} チャンク取り込み完了")
+                    st.success(f"✅ {name}: {stats.total_chunks} chunk(s) ingested successfully")
 
         # Refresh stats
         updated = _get_collection_stats()
         if not updated["error"]:
-            st.metric("合計チャンク数 (更新後)", updated["count"])
+            st.metric("Total chunk count (updated)", updated["count"])

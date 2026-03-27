@@ -4,8 +4,8 @@ Vision LLM integration for describing slide/page images.
 Used during ingestion of PDF and PPTX files.
 The Vision LLM is called only at ingestion time — never at query time.
 
-This module takes a rendered image (PNG) and returns a Japanese text
-description of all visual elements: text, charts, diagrams, tables, photos.
+This module takes a rendered image (PNG) and returns a text description
+of all visual elements: text, charts, diagrams, tables, photos.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def describe_image(image_path: str | Path, *, max_tokens: int | None = None) -> 
         max_tokens: Override the default max_tokens from config.
 
     Returns:
-        Japanese text description of the visual content.
+        Text description of the visual content.
         Returns an empty string if the image file does not exist.
 
     Raises:
@@ -64,7 +64,7 @@ def enrich_chunk_with_vision(
 
     Returns:
         Combined content string:
-            "<extracted text>\n\n[視覚要素]\n<vision description>"
+            "<extracted text>\n\n[Visual Elements]\n<vision description>"
         or just the original text if no image is provided.
     """
     if not image_path:
@@ -74,4 +74,4 @@ def enrich_chunk_with_vision(
     if not description:
         return text_content
 
-    return f"{text_content}\n\n[視覚要素]\n{description}"
+    return f"{text_content}\n\n[Visual Elements]\n{description}"

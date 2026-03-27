@@ -50,7 +50,7 @@ def _get_graph():
 def _render_citations(citations: list) -> None:
     if not citations:
         return
-    with st.expander(f"📎 引用 ({len(citations)}件)", expanded=False):
+    with st.expander(f"📎 Citations ({len(citations)})", expanded=False):
         for cit in citations:
             page_info = f" — p.{cit.page_number}" if cit.page_number else ""
             st.markdown(f"**[{cit.citation_id}] {cit.source_file}{page_info}**")
@@ -64,11 +64,11 @@ def _render_validation_score(scores: dict) -> None:
     avg = scores.get("average", 0)
     color = "green" if avg >= 80 else "orange" if avg >= 60 else "red"
     st.markdown(
-        f"<span style='color:{color}'>■ 検証スコア: **{avg:.1f}/100**</span> "
-        f"(完全性:{scores.get('completeness',0)} / "
-        f"正確性:{scores.get('accuracy',0)} / "
-        f"関連性:{scores.get('relevance',0)} / "
-        f"忠実性:{scores.get('faithfulness',0)})",
+        f"<span style='color:{color}'>■ Validation score: **{avg:.1f}/100**</span> "
+        f"(Completeness:{scores.get('completeness',0)} / "
+        f"Accuracy:{scores.get('accuracy',0)} / "
+        f"Relevance:{scores.get('relevance',0)} / "
+        f"Faithfulness:{scores.get('faithfulness',0)})",
         unsafe_allow_html=True,
     )
 
@@ -85,14 +85,14 @@ def render() -> None:
 
     # Sidebar: filters
     with st.sidebar:
-        st.subheader("検索フィルター")
+        st.subheader("Search Filters")
         source_filter = st.multiselect(
-            "ファイルタイプ",
+            "File type",
             ["txt", "md", "html", "py", "pdf", "pptx"],
             default=[],
         )
-        use_colbert = st.checkbox("ColBERT検索を使用", value=False)
-        if st.button("会話をリセット"):
+        use_colbert = st.checkbox("Use ColBERT search", value=False)
+        if st.button("Reset conversation"):
             st.session_state.messages = []
             st.session_state.thread_id = str(uuid.uuid4())
             st.session_state.waiting_for_user = False
@@ -110,9 +110,9 @@ def render() -> None:
 
     # Input area
     if st.session_state.waiting_for_user:
-        prompt = st.chat_input("Facilitatorへの回答を入力してください...")
+        prompt = st.chat_input("Enter your response to the Facilitator...")
     else:
-        prompt = st.chat_input("質問を入力してください...")
+        prompt = st.chat_input("Enter your question...")
 
     if not prompt:
         return
@@ -159,13 +159,13 @@ def render() -> None:
             for event in graph.stream(stream_input, config, stream_mode="values"):
                 # Track agent progress
                 if "facilitator" in str(event):
-                    status_placeholder.info("🧠 Facilitator: クエリを解析中...")
+                    status_placeholder.info("🧠 Facilitator: Analyzing query...")
                 if "synthesizer" in str(event):
-                    status_placeholder.info("✍️ Synthesizer: 回答を生成中...")
+                    status_placeholder.info("✍️ Synthesizer: Generating answer...")
                 if "researcher" in str(event):
-                    status_placeholder.info("🔍 Researcher: ドキュメントを検索中...")
+                    status_placeholder.info("🔍 Researcher: Searching documents...")
                 if "validator" in str(event):
-                    status_placeholder.info("✅ Validator: 回答を評価中...")
+                    status_placeholder.info("✅ Validator: Evaluating answer...")
 
                 # Extract current state values
                 state = event if isinstance(event, dict) else {}
@@ -175,10 +175,10 @@ def render() -> None:
                     feedback = state.get("feedback_to_user", "")
                     st.session_state.waiting_for_user = True
                     st.session_state.pending_state = state
-                    answer_placeholder.warning(f"**Facilitator より:**\n\n{feedback}")
+                    answer_placeholder.warning(f"**From Facilitator:**\n\n{feedback}")
                     status_placeholder.empty()
                     st.session_state.messages.append(
-                        {"role": "assistant", "content": f"**Facilitator より:**\n\n{feedback}"}
+                        {"role": "assistant", "content": f"**From Facilitator:**\n\n{feedback}"}
                     )
                     return
 
@@ -212,13 +212,13 @@ def render() -> None:
                 if final_scores:
                     _render_validation_score(final_scores)
             else:
-                answer_placeholder.warning("回答を生成できませんでした。")
+                answer_placeholder.warning("Could not generate an answer.")
 
         except Exception as exc:
             logger.error("Graph execution error: %s", exc, exc_info=True)
             status_placeholder.empty()
-            answer_placeholder.error(f"エラーが発生しました: {exc}")
-            final_answer = f"エラー: {exc}"
+            answer_placeholder.error(f"An error occurred: {exc}")
+            final_answer = f"Error: {exc}"
 
     # Save to message history
     st.session_state.messages.append({

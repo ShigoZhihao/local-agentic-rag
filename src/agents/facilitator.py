@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def _format_chat_history(history: list[ConversationTurn]) -> str:
     """Format conversation history as a readable string for the prompt."""
     if not history:
-        return "（会話履歴なし）"
+        return "(No conversation history)"
     lines: list[str] = []
     for turn in history[-6:]:  # Last 6 turns to keep context manageable
         lines.append(f"[{turn.role}]: {turn.content}")
@@ -38,12 +38,12 @@ def _format_chat_history(history: list[ConversationTurn]) -> str:
 def _format_validator_feedback(validation: ValidationResult | None) -> str:
     """Extract actionable feedback from Validator result."""
     if not validation:
-        return "（フィードバックなし）"
-    missing = "、".join(validation.missing_info) if validation.missing_info else "なし"
+        return "(No feedback)"
+    missing = ", ".join(validation.missing_info) if validation.missing_info else "none"
     return (
-        f"検証スコア: {validation.scores.average:.1f}/100\n"
-        f"理由: {validation.reason}\n"
-        f"不足情報: {missing}"
+        f"Validation score: {validation.scores.average:.1f}/100\n"
+        f"Reason: {validation.reason}\n"
+        f"Missing information: {missing}"
     )
 
 
@@ -114,7 +114,7 @@ def run(state: RAGState) -> RAGState:
         # Ask the user for more information
         questions = result.get("questions", [])
         question_text = "\n".join(f"{i+1}. {q}" for i, q in enumerate(questions))
-        feedback = f"より良い回答のために、以下を教えてください:\n{question_text}"
+        feedback = f"To provide a better answer, please let me know the following:\n{question_text}"
 
         new_turn = ConversationTurn(
             role="facilitator",

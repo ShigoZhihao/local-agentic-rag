@@ -18,8 +18,8 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 _EXAMPLE_JSONL = """\
-{"query": "エラーログの出力方法", "relevant_ids": ["chunk-001", "chunk-002"]}
-{"query": "設定ファイルの読み込み", "relevant_ids": ["chunk-010", "chunk-011"]}"""
+{"query": "How to output error logs", "relevant_ids": ["chunk-001", "chunk-002"]}
+{"query": "How to load a config file", "relevant_ids": ["chunk-010", "chunk-011"]}"""
 
 
 def _parse_eval_data(text: str) -> tuple[list[str], list[set[str]]]:
@@ -41,15 +41,15 @@ def _parse_eval_data(text: str) -> tuple[list[str], list[set[str]]]:
 
 def render() -> None:
     """Render the Evaluation page."""
-    st.title("📊 検索精度評価")
-    st.caption("Precision@k / Recall@k / MAP@k / MRR@k を計算します。")
+    st.title("📊 Retrieval Accuracy Evaluation")
+    st.caption("Computes Precision@k / Recall@k / MAP@k / MRR@k.")
 
     # Settings
     with st.sidebar:
-        st.subheader("評価設定")
-        k = st.slider("@k (カットオフ)", min_value=1, max_value=20, value=10)
+        st.subheader("Evaluation Settings")
+        k = st.slider("@k (cutoff)", min_value=1, max_value=20, value=10)
         search_mode = st.selectbox(
-            "検索モード",
+            "Search mode",
             ["hybrid", "bm25", "semantic"],
             index=0,
         )
@@ -60,21 +60,21 @@ def render() -> None:
         )
 
     # Evaluation data input
-    st.subheader("評価データ (JSONL)")
+    st.subheader("Evaluation Data (JSONL)")
     eval_text = st.text_area(
-        "各行: {\"query\": \"...\", \"relevant_ids\": [\"...\", ...]}",
+        "Each line: {\"query\": \"...\", \"relevant_ids\": [\"...\", ...]}",
         value=_EXAMPLE_JSONL,
         height=200,
     )
 
     queries, relevant_ids = _parse_eval_data(eval_text)
     if queries:
-        st.success(f"{len(queries)} クエリを読み込みました。")
+        st.success(f"{len(queries)} query/queries loaded.")
     else:
-        st.warning("有効なクエリが見つかりません。")
+        st.warning("No valid queries found.")
         return
 
-    if st.button("評価実行", type="primary"):
+    if st.button("Run evaluation", type="primary"):
         _run_evaluation(queries, relevant_ids, k=k, search_mode=search_mode, alpha=alpha)
 
 
@@ -99,14 +99,14 @@ def _run_evaluation(
         embedder = Embedder()
         searcher = HybridSearcher(embedder=embedder)
     except Exception as exc:
-        st.error(f"検索エンジン初期化エラー: {exc}")
+        st.error(f"Search engine initialization error: {exc}")
         return
 
     queries_results = []
     per_query_scores = []
 
     for i, (query, rel) in enumerate(zip(queries, relevant_ids)):
-        status_text.info(f"クエリ {i+1}/{len(queries)}: {query[:60]}")
+        status_text.info(f"Query {i+1}/{len(queries)}: {query[:60]}")
         progress_bar.progress(i / len(queries))
 
         try:
@@ -125,12 +125,12 @@ def _run_evaluation(
         per_query_scores.append({"query": query, **scores})
 
     progress_bar.progress(1.0)
-    status_text.success("評価完了！")
+    status_text.success("Evaluation complete!")
 
     # Aggregated scores
     agg = evaluate_retrieval_batch(queries_results, relevant_ids, k=k)
 
-    st.subheader("集計スコア")
+    st.subheader("Aggregated Scores")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(f"Precision@{k}", f"{agg[f'precision@{k}']:.4f}")
     col2.metric(f"Recall@{k}", f"{agg[f'recall@{k}']:.4f}")
@@ -140,14 +140,14 @@ def _run_evaluation(
     st.divider()
 
     # Per-query breakdown
-    st.subheader("クエリ別スコア")
+    st.subheader("Per-Query Scores")
     df = pd.DataFrame(per_query_scores)
     st.dataframe(df, use_container_width=True)
 
     # Query drill-down
-    st.subheader("検索結果の詳細")
+    st.subheader("Search Result Details")
     selected_idx = st.selectbox(
-        "クエリを選択",
+        "Select a query",
         range(len(queries)),
         format_func=lambda i: queries[i][:60],
     )
@@ -168,4 +168,4 @@ def _run_evaluation(
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
         else:
-            st.info("結果なし")
+            st.info("No results")
