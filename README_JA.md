@@ -111,18 +111,18 @@ Python 3.12 が必要です (3.13 は ragatouille が非対応)。
 
 ## セットアップ
 
-> **`pip install -e .` の CPU 使用率が高い場合は、後述の「低負荷版」を使用してください。**
+> **`uv pip install -e .` の CPU 使用率が高い場合は、後述の「低負荷版」を使用してください。**
 
 ### 通常インストール
 
 ```bash
 # 1. 仮想環境を作成
-python -m venv .venv
+uv venv
 .venv\Scripts\activate     # Windows
 # source .venv/bin/activate  # macOS/Linux
 
 # 2. 依存パッケージのインストール
-pip install -e .
+uv pip install -e .
 
 # 3. BGE-M3 embedding モデルの事前ダウンロード (~1.5GB)
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
@@ -130,23 +130,23 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ### 低負荷版インストール — CPU 97%+ 問題の回避
 
-`pip install -e .` が全依存を一括解決するため、PyTorch のダウンロード・展開で CPU が 97%+ になります。
+`uv pip install -e .` が全依存を一括解決するため、PyTorch のダウンロード・展開で CPU が 97%+ になります。
 分割インストールすると負荷を抑えられます:
 
 ```bash
 # Step 1: PyTorch を先に入れる (最大の原因, ~2GB, CUDA 12.1 版)
-.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 # Step 2: 残りを少量ずつインストール
-.venv\Scripts\pip install weaviate-client
-.venv\Scripts\pip install sentence-transformers
-.venv\Scripts\pip install langgraph langchain-core langchain-text-splitters
-.venv\Scripts\pip install openai pydantic pydantic-settings pyyaml
-.venv\Scripts\pip install pymupdf python-pptx beautifulsoup4
-.venv\Scripts\pip install streamlit pandas ranx pytest pytest-mock
+uv pip install weaviate-client
+uv pip install sentence-transformers
+uv pip install langgraph langchain-core langchain-text-splitters
+uv pip install openai pydantic pydantic-settings pyyaml
+uv pip install pymupdf python-pptx beautifulsoup4
+uv pip install streamlit pandas ranx pytest pytest-mock
 
 # Step 3: プロジェクト本体を依存解決なしで登録 (CPU 負荷ほぼゼロ)
-.venv\Scripts\pip install -e . --no-deps
+uv pip install -e . --no-deps
 ```
 
 ### Weaviate 起動・接続確認

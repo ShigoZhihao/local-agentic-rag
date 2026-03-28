@@ -412,25 +412,25 @@ evaluation:
 
 1. Python 3.12仮想環境作成、依存関係インストール
 
-   > **`pip install -e .` でCPU 97%+ になる場合（解決策）**
+   > **`uv pip install -e .` でCPU 97%+ になる場合（解決策）**
    >
-   > `pip install -e .` が全依存を一括解決するため、PyTorchのダウンロード・展開でCPUが跳ね上がる。
+   > `uv pip install -e .` が全依存を一括解決するため、PyTorchのダウンロード・展開でCPUが跳ね上がる。
    > 以下の手順で分割インストールすると負荷を抑えられる:
    >
    > ```bash
    > # Step 1: PyTorchを先に入れる (最大の原因, ~2GB, CUDA 12.1版)
-   > .venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu121
+   > uv pip install torch --index-url https://download.pytorch.org/whl/cu121
    >
    > # Step 2: 残りを少量ずつインストール
-   > .venv\Scripts\pip install weaviate-client
-   > .venv\Scripts\pip install sentence-transformers
-   > .venv\Scripts\pip install langgraph langchain-core langchain-text-splitters
-   > .venv\Scripts\pip install openai pydantic pydantic-settings pyyaml
-   > .venv\Scripts\pip install pymupdf python-pptx beautifulsoup4
-   > .venv\Scripts\pip install streamlit pandas ranx pytest pytest-mock
+   > uv pip install weaviate-client
+   > uv pip install sentence-transformers
+   > uv pip install langgraph langchain-core langchain-text-splitters
+   > uv pip install openai pydantic pydantic-settings pyyaml
+   > uv pip install pymupdf python-pptx beautifulsoup4
+   > uv pip install streamlit pandas ranx pytest pytest-mock
    >
    > # Step 3: プロジェクト本体を依存解決なしで登録 (CPU負荷ほぼゼロ)
-   > .venv\Scripts\pip install -e . --no-deps
+   > uv pip install -e . --no-deps
    > ```
 2. `src/models.py` — 上記のPydanticデータモデル全体
 3. `src/config.py` — config.yamlをPydantic Settingsクラスに読込

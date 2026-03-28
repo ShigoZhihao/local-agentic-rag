@@ -111,18 +111,18 @@ Python 3.12 is required (3.13 is incompatible with ragatouille).
 
 ## Setup
 
-> **If `pip install -e .` causes 97%+ CPU usage, use the low-load installation steps below.**
+> **If `uv pip install -e .` causes 97%+ CPU usage, use the low-load installation steps below.**
 
 ### Standard Installation
 
 ```bash
 # 1. Create virtual environment
-python -m venv .venv
+uv venv
 .venv\Scripts\activate     # Windows
 # source .venv/bin/activate  # macOS/Linux
 
 # 2. Install dependencies
-pip install -e .
+uv pip install -e .
 
 # 3. Pre-download BGE-M3 embedding model (~1.5GB)
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
@@ -130,24 +130,24 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ### Low-Load Installation — Avoiding 97%+ CPU
 
-`pip install -e .` resolves all dependencies at once, causing high CPU usage during PyTorch
+`uv pip install -e .` resolves all dependencies at once, causing high CPU usage during PyTorch
 download and extraction. Install in stages to reduce load:
 
 ```bash
 # Step 1: Install PyTorch first (the main culprit, ~2GB)
 # For NVIDIA GPU with CUDA 12.1:
-.venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 # Step 2: Install remaining packages in small batches
-.venv\Scripts\pip install weaviate-client
-.venv\Scripts\pip install sentence-transformers
-.venv\Scripts\pip install langgraph langchain-core langchain-text-splitters
-.venv\Scripts\pip install openai pydantic pydantic-settings pyyaml
-.venv\Scripts\pip install pymupdf python-pptx beautifulsoup4
-.venv\Scripts\pip install streamlit pandas ranx pytest pytest-mock
+uv pip install weaviate-client
+uv pip install sentence-transformers
+uv pip install langgraph langchain-core langchain-text-splitters
+uv pip install openai pydantic pydantic-settings pyyaml
+uv pip install pymupdf python-pptx beautifulsoup4
+uv pip install streamlit pandas ranx pytest pytest-mock
 
 # Step 3: Register the project itself without re-resolving dependencies (near-zero CPU)
-.venv\Scripts\pip install -e . --no-deps
+uv pip install -e . --no-deps
 ```
 
 ### Start Weaviate and Verify Connection
