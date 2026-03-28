@@ -122,7 +122,7 @@ uv venv --python 3.12
 # source .venv/bin/activate  # macOS/Linux
 
 # 2. 依存パッケージのインストール
-uv pip install -e .
+uv pip install -e . --link-mode=copy
 
 # 3. BGE-M3 embedding モデルの事前ダウンロード (~1.5GB)
 python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
@@ -135,18 +135,18 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ```bash
 # Step 1: PyTorch を先に入れる (最大の原因, ~2GB, CUDA 12.1 版)
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121 --link-mode=copy
 
 # Step 2: 残りを少量ずつインストール
-uv pip install weaviate-client
-uv pip install sentence-transformers
-uv pip install langgraph langchain-core langchain-text-splitters
-uv pip install openai pydantic pydantic-settings pyyaml
-uv pip install pymupdf python-pptx beautifulsoup4
-uv pip install streamlit pandas ranx pytest pytest-mock
+uv pip install weaviate-client --link-mode=copy
+uv pip install sentence-transformers --link-mode=copy
+uv pip install langgraph langchain-core langchain-text-splitters --link-mode=copy
+uv pip install openai pydantic pydantic-settings pyyaml --link-mode=copy
+uv pip install pymupdf python-pptx beautifulsoup4 --link-mode=copy
+uv pip install streamlit pandas ranx pytest pytest-mock --link-mode=copy
 
 # Step 3: プロジェクト本体を依存解決なしで登録 (CPU 負荷ほぼゼロ)
-uv pip install -e . --no-deps
+uv pip install -e . --no-deps --link-mode=copy
 ```
 
 ### Weaviate 起動・接続確認
