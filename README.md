@@ -117,7 +117,7 @@ Python 3.12 is required (3.13 is incompatible with ragatouille).
 
 ```bash
 # 1. Create virtual environment
-uv venv
+uv venv --python 3.12
 .venv\Scripts\activate     # Windows
 # source .venv/bin/activate  # macOS/Linux
 
