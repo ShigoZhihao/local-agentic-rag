@@ -16,7 +16,6 @@ dependencies = [
     "openai>=1.50",
     # Agent Graph
     "langgraph>=0.2",
-    "langchain-core>=0.3",
     # Chunking
     "langchain-text-splitters>=0.3",
     "beautifulsoup4>=4.12",
@@ -26,7 +25,6 @@ dependencies = [
     # Config / Data Models
     "pyyaml>=6.0",
     "pydantic>=2.9",
-    "pydantic-settings>=2.5",
     # UI
     "streamlit>=1.40",
     # ColBERT (optional, may need Python 3.12 workaround)
