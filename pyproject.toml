@@ -27,8 +27,6 @@ dependencies = [
     "pyyaml>=6.0",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
-    # Evaluation
-    "ranx>=0.3",
     # UI
     "streamlit>=1.40",
     # ColBERT (optional, may need Python 3.12 workaround)
