@@ -141,10 +141,10 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cu121 --link-m
 # Step 2: Install remaining packages in small batches
 uv pip install weaviate-client --link-mode=copy
 uv pip install sentence-transformers --link-mode=copy
-uv pip install langgraph langchain-core langchain-text-splitters --link-mode=copy
-uv pip install openai pydantic pydantic-settings pyyaml --link-mode=copy
+uv pip install langgraph langchain-text-splitters --link-mode=copy
+uv pip install openai pydantic pyyaml --link-mode=copy
 uv pip install pymupdf python-pptx beautifulsoup4 --link-mode=copy
-uv pip install streamlit pandas ranx pytest pytest-mock --link-mode=copy
+uv pip install streamlit pandas pytest pytest-mock --link-mode=copy
 
 # Step 3: Register the project itself without re-resolving dependencies (near-zero CPU)
 uv pip install -e . --no-deps --link-mode=copy
