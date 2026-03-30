@@ -10,7 +10,7 @@ import logging
 
 from openai import OpenAI
 
-from src.config import OllamaConfig
+from config import OllamaConfig
 
 logger = logging.getLogger(__name__)
 

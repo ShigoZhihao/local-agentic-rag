@@ -8,8 +8,8 @@ What this level demonstrates:
 
 import streamlit as st
 
-from src.config import get_config
-from src.llm_client import chat, create_client
+from config import get_config
+from llm_client import chat, create_client
 
 # ── Page setup ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Level 1 — Prompt Only", layout="wide")
