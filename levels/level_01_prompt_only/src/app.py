@@ -65,7 +65,7 @@ if user_input := st.chat_input("Ask anything..."):
     ]
 
     with st.chat_message("assistant"):
-        with st.spinner("Waiting for response..."):
+        with st.spinner("Generating..."):
             client = create_client(cfg.ollama)
             result = chat(client, cfg.ollama, full_messages)
             gpu = get_gpu_stats()
