@@ -1,14 +1,10 @@
-"""Thin OpenAI-compatible client for Ollama.
+"""Thin OpenAI-compatible streaming client for Ollama.
 
 Core loop at this level:
-    user input → LLM → output
-
-No tools, no retrieval, no memory beyond what the caller passes in.
+    user input → LLM → output (streamed token by token)
 """
 
 import logging
-import time
-from dataclasses import dataclass
 
 from openai import OpenAI
 
@@ -17,57 +13,56 @@ from config import OllamaConfig
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ChatResult:
-    reply: str
-    prompt_tokens: int
-    completion_tokens: int
-    elapsed_sec: float
-
-
 def create_client(cfg: OllamaConfig) -> OpenAI:
-    """Create an OpenAI client pointed at a local Ollama instance.
-
-    Args:
-        cfg: Ollama connection settings.
-
-    Returns:
-        Configured OpenAI client.
-    """
+    """Create an OpenAI client pointed at a local Ollama instance."""
     return OpenAI(base_url=cfg.base_url, api_key="ollama")
 
 
-def chat(
-    client: OpenAI,
-    cfg: OllamaConfig,
-    messages: list[dict[str, str]],
-) -> ChatResult:
-    """Send messages to the model and return the reply with usage metrics.
+class StreamingChat:
+    """Streams text chunks from Ollama one token at a time.
 
-    Args:
-        client: OpenAI client instance.
-        cfg: Ollama model settings.
-        messages: Full conversation history including system prompt.
-
-    Returns:
-        ChatResult with reply text, token counts, and elapsed time.
+    Usage:
+        stream = StreamingChat(client, cfg, messages)
+        reply = st.write_stream(stream)          # Streamlit streams to UI
+        tokens_in  = stream.prompt_tokens        # available after iteration
+        tokens_out = stream.completion_tokens
     """
-    try:
-        t0 = time.perf_counter()
-        response = client.chat.completions.create(
-            model=cfg.model,
-            messages=messages,  # type: ignore[arg-type]
-            temperature=cfg.temperature,
-            max_tokens=cfg.max_tokens,
-        )
-        elapsed = time.perf_counter() - t0
-        usage = response.usage
-        return ChatResult(
-            reply=response.choices[0].message.content or "",
-            prompt_tokens=usage.prompt_tokens if usage else 0,
-            completion_tokens=usage.completion_tokens if usage else 0,
-            elapsed_sec=elapsed,
-        )
-    except Exception as e:
-        logger.error("LLM call failed: %s", e)
-        raise
+
+    def __init__(
+        self,
+        client: OpenAI,
+        cfg: OllamaConfig,
+        messages: list[dict[str, str]],
+    ) -> None:
+        self.prompt_tokens: int = 0
+        self.completion_tokens: int = 0
+        try:
+            self._response = client.chat.completions.create(
+                model=cfg.model,
+                messages=messages,  # type: ignore[arg-type]
+                temperature=cfg.temperature,
+                max_tokens=cfg.max_tokens,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
+        except Exception as e:
+            logger.error("Failed to start streaming: %s", e)
+            raise
+
+    def __iter__(self):
+        """Yield text delta strings. Populate token counts from the final chunk."""
+        try:
+            for chunk in self._response:
+                content = (
+                    chunk.choices[0].delta.content
+                    if chunk.choices
+                    else None
+                )
+                if content:
+                    yield content
+                if chunk.usage:
+                    self.prompt_tokens = chunk.usage.prompt_tokens
+                    self.completion_tokens = chunk.usage.completion_tokens
+        except Exception as e:
+            logger.error("Streaming interrupted: %s", e)
+            raise

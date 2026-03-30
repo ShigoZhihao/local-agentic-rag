@@ -2,15 +2,17 @@
 
 What this level demonstrates:
     The most basic agent loop: user input → LLM → output.
-    No tools, no retrieval, no external memory.
-    The only levers are the system prompt and model settings.
+    Tokens are streamed in real time.
+    Resource usage (CPU, GPU, VRAM, RAM) is measured as delta during generation.
 """
+
+import time
 
 import streamlit as st
 
 from config import get_config
-from llm_client import chat, create_client
-from metrics import format_metrics, get_gpu_stats, get_ram_stats
+from llm_client import StreamingChat, create_client
+from metrics import format_metrics, measure_delta, take_snapshot
 
 # ── Page setup ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Level 1 — Prompt Only", layout="wide")
@@ -23,7 +25,7 @@ if "cfg" not in st.session_state:
 
 cfg = st.session_state.cfg
 
-# ── Sidebar: editable system prompt & model info ──────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Settings")
     system_prompt = st.text_area(
@@ -41,49 +43,53 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# ── Session state: conversation history ───────────────────────────────────────
+# ── Session state ─────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
     st.session_state.messages = []  # list of {"role", "content", "metrics"}
 
-# ── Render existing messages ──────────────────────────────────────────────────
+# ── Render history ────────────────────────────────────────────────────────────
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg["role"] == "assistant" and msg.get("metrics"):
-            st.caption(f"📊 {msg['metrics']}")
+            st.caption(msg["metrics"])
 
-# ── Handle new user input ─────────────────────────────────────────────────────
+# ── Handle new input ──────────────────────────────────────────────────────────
 if user_input := st.chat_input("Ask anything..."):
+    # Timer starts the moment the user submits
+    t_start = time.perf_counter()
+
+    # Baseline snapshot primes CPU/GPU counters for delta measurement
+    baseline = take_snapshot()
+
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Build full message list: system prompt + history (content only)
     full_messages = [{"role": "system", "content": system_prompt}] + [
         {"role": m["role"], "content": m["content"]}
         for m in st.session_state.messages
     ]
 
     with st.chat_message("assistant"):
-        with st.spinner("Generating..."):
-            client = create_client(cfg.ollama)
-            result = chat(client, cfg.ollama, full_messages)
-            gpu = get_gpu_stats()
-            ram = get_ram_stats()
+        client = create_client(cfg.ollama)
+        stream = StreamingChat(client, cfg.ollama, full_messages)
 
-        st.markdown(result.reply)
+        # st.write_stream() renders each token as it arrives, returns full reply
+        reply = st.write_stream(stream)
 
-        metrics_str = format_metrics(
-            prompt_tokens=result.prompt_tokens,
-            completion_tokens=result.completion_tokens,
-            elapsed_sec=result.elapsed_sec,
-            gpu=gpu,
-            ram=ram,
+        elapsed = time.perf_counter() - t_start
+        metrics = measure_delta(
+            baseline=baseline,
+            prompt_tokens=stream.prompt_tokens,
+            completion_tokens=stream.completion_tokens,
+            elapsed_sec=elapsed,
         )
-        st.caption(f"📊 {metrics_str}")
+        metrics_str = format_metrics(metrics)
+        st.caption(metrics_str)
 
     st.session_state.messages.append({
         "role": "assistant",
-        "content": result.reply,
+        "content": reply,
         "metrics": metrics_str,
     })
