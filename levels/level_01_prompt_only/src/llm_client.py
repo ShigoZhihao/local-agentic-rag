@@ -7,12 +7,22 @@ No tools, no retrieval, no memory beyond what the caller passes in.
 """
 
 import logging
+import time
+from dataclasses import dataclass
 
 from openai import OpenAI
 
 from config import OllamaConfig
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ChatResult:
+    reply: str
+    prompt_tokens: int
+    completion_tokens: int
+    elapsed_sec: float
 
 
 def create_client(cfg: OllamaConfig) -> OpenAI:
@@ -31,26 +41,33 @@ def chat(
     client: OpenAI,
     cfg: OllamaConfig,
     messages: list[dict[str, str]],
-) -> str:
-    """Send a list of messages to the model and return the reply text.
+) -> ChatResult:
+    """Send messages to the model and return the reply with usage metrics.
 
     Args:
         client: OpenAI client instance.
         cfg: Ollama model settings.
-        messages: Full conversation history including system prompt,
-                  e.g. [{"role": "system", "content": "..."}, ...].
+        messages: Full conversation history including system prompt.
 
     Returns:
-        The assistant's reply as a plain string.
+        ChatResult with reply text, token counts, and elapsed time.
     """
     try:
+        t0 = time.perf_counter()
         response = client.chat.completions.create(
             model=cfg.model,
             messages=messages,  # type: ignore[arg-type]
             temperature=cfg.temperature,
             max_tokens=cfg.max_tokens,
         )
-        return response.choices[0].message.content or ""
+        elapsed = time.perf_counter() - t0
+        usage = response.usage
+        return ChatResult(
+            reply=response.choices[0].message.content or "",
+            prompt_tokens=usage.prompt_tokens if usage else 0,
+            completion_tokens=usage.completion_tokens if usage else 0,
+            elapsed_sec=elapsed,
+        )
     except Exception as e:
         logger.error("LLM call failed: %s", e)
         raise

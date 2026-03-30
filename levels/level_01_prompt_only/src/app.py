@@ -10,6 +10,7 @@ import streamlit as st
 
 from config import get_config
 from llm_client import chat, create_client
+from metrics import format_metrics, get_gpu_stats, get_ram_stats
 
 # ── Page setup ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Level 1 — Prompt Only", layout="wide")
@@ -42,12 +43,14 @@ with st.sidebar:
 
 # ── Session state: conversation history ───────────────────────────────────────
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = []  # list of {"role", "content", "metrics"}
 
 # ── Render existing messages ──────────────────────────────────────────────────
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg["role"] == "assistant" and msg.get("metrics"):
+            st.caption(f"📊 {msg['metrics']}")
 
 # ── Handle new user input ─────────────────────────────────────────────────────
 if user_input := st.chat_input("Ask anything..."):
@@ -55,13 +58,32 @@ if user_input := st.chat_input("Ask anything..."):
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Build full message list: system prompt + history
-    full_messages = [{"role": "system", "content": system_prompt}] + st.session_state.messages
+    # Build full message list: system prompt + history (content only)
+    full_messages = [{"role": "system", "content": system_prompt}] + [
+        {"role": m["role"], "content": m["content"]}
+        for m in st.session_state.messages
+    ]
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        with st.spinner("Waiting for response..."):
             client = create_client(cfg.ollama)
-            reply = chat(client, cfg.ollama, full_messages)
-        st.markdown(reply)
+            result = chat(client, cfg.ollama, full_messages)
+            gpu = get_gpu_stats()
+            ram = get_ram_stats()
 
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.markdown(result.reply)
+
+        metrics_str = format_metrics(
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            elapsed_sec=result.elapsed_sec,
+            gpu=gpu,
+            ram=ram,
+        )
+        st.caption(f"📊 {metrics_str}")
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": result.reply,
+        "metrics": metrics_str,
+    })

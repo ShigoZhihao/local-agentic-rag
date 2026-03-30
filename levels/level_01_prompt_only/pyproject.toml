@@ -7,4 +7,6 @@ dependencies = [
     "pydantic>=2.9",
     "pyyaml>=6.0",
     "streamlit>=1.40",
+    "psutil>=6.0",
+    "pynvml>=11.0",
 ]
