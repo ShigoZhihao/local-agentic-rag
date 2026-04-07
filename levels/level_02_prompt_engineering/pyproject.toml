@@ -1,5 +1,5 @@
 [project]
-name = "level-01-prompt-only"
+name = "level-02-prompt-engineering"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [

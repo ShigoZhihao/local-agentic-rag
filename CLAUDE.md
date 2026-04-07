@@ -5,21 +5,26 @@ All code in this project MUST follow the conventions below.
 
 ## Architecture
 
-LangGraphで制御する4エージェント構成:
-- **Facilitator** (`src/agents/facilitator.py`): prompt理解・エンリッチ・不足情報質問 (qwen3.5-27b)
-- **Synthesizer** (`src/agents/synthesizer.py`): 自力回答判断・回答生成 (qwen3.5-9b)
-- **Researcher** (`src/agents/researcher.py`): Hybrid Search → Filter → Re-rank → 引用ステッチ (LLM不使用)
-- **Validator** (`src/agents/validator.py`): LLM-as-Judge 4軸採点・ループ制御 (qwen3.5-27b)
+12レベル段階的構成。Level 7 がメイン実装（LangGraph 4エージェント）。
 
-グラフ定義: `src/agents/graph.py` (LangGraph StateGraph + MemorySaver)
-共有状態: `src/agents/state.py` (RAGState TypedDict)
+Level 7: LangGraphで制御する4エージェント構成:
+- **Facilitator** (`levels/level_07_multi_agent/src/agents/facilitator.py`): prompt理解・エンリッチ (gemma4:e4b)
+- **Synthesizer** (`levels/level_07_multi_agent/src/agents/synthesizer.py`): 自力回答判断・回答生成 (gemma4:e2b)
+- **Researcher** (`levels/level_07_multi_agent/src/agents/researcher.py`): Hybrid Search → Filter → Re-rank → 引用ステッチ (LLM不使用)
+- **Validator** (`levels/level_07_multi_agent/src/agents/validator.py`): LLM-as-Judge 4軸採点・ループ制御 (gemma4:e4b)
 
-Key paths:
-- `src/models.py` — 全Pydanticデータモデル (Document, Chunk, Citation, ValidationResult等)
-- `src/config.py` — config.yaml → Pydantic Settings
-- `src/generation/llm_client.py` — LM Studio接続 (全LLM呼び出しはここ経由)
-- `src/generation/prompts.py` — 全プロンプトテンプレート定数
-- `src/retrieval/weaviate_client.py` — Weaviate接続・スキーマ・CRUD
+グラフ定義: `levels/level_07_multi_agent/src/agents/graph.py` (LangGraph StateGraph + MemorySaver)
+共有状態: `levels/level_07_multi_agent/src/agents/state.py` (RAGState TypedDict)
+
+Key paths (Level 7):
+- `levels/level_07_multi_agent/src/models.py` — 全Pydanticデータモデル
+- `levels/level_07_multi_agent/src/config.py` — config.yaml → Pydantic Settings
+- `levels/level_07_multi_agent/src/generation/llm_client.py` — Ollama接続 (全LLM呼び出しはここ経由)
+- `levels/level_07_multi_agent/src/generation/prompts.py` — 全プロンプトテンプレート定数
+- `levels/level_07_multi_agent/src/retrieval/weaviate_client.py` — Weaviate接続・スキーマ・CRUD
+
+Models: gemma4:e2b (executor), gemma4:e4b (planner) — thinking models with `<think>` tag support
+UI: Reflex with Siemens teal `#009999`, thinking shown in collapsible accordion
 
 ## Coding Conventions
 
@@ -59,8 +64,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 ### LLM Calls
 - ALL LLM calls go through `src/generation/llm_client.py` — never import openai directly
-- Use `call_planner()` for Facilitator/Validator (qwen3.5-27b)
-- Use `call_executor()` for Synthesizer (qwen3.5-9b)
+- Use `call_planner()` for Facilitator/Validator (gemma4:e4b) — returns `LLMResponse(thinking, answer)`
+- Use `call_executor()` for Synthesizer (gemma4:e2b) — returns `LLMResponse(thinking, answer)`
+- Thinking models: `<think>...</think>` tags are automatically parsed by `strip_thinking()`
 
 ### Prompts
 - ALL prompt text lives in `src/generation/prompts.py` as string constants
@@ -133,11 +139,13 @@ Agents do NOT inherit from a base class. They are plain function-based modules.
 ## Running the App
 
 ```bash
+cd levels/level_07_multi_agent
+
 # Start Weaviate
 docker compose up -d
 
-# Run Streamlit UI
-streamlit run src/ui/app.py
+# Run Reflex UI
+reflex run
 ```
 
 ## Testing

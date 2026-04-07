@@ -15,9 +15,36 @@
 
 ---
 
-A fully local Agentic RAG (Retrieval-Augmented Generation) system. Zero API costs, 100% open-source.
+A progressive, 12-level learning path from bare LLM chat to a fully autonomous
+agent system. Zero API costs, 100% local (Ollama + Weaviate).
 
-## Architecture
+**Models:** Ollama `gemma4:e2b` / `gemma4:e4b` (thinking models)
+**UI:** Claude-inspired chat interface with Siemens brand colour (`#009999`)
+
+## Levels
+
+Each level is **self-contained** with its own `src/`, `pyproject.toml`, and `README.md`.
+
+| | Level | Folder | Framework | Model |
+|-|-------|--------|-----------|-------|
+| | **raw openai SDK** | | | |
+| 1 | Prompt Only | `level_01_prompt_only` | openai SDK | e2b |
+| 2 | Prompt Engineering | `level_02_prompt_engineering` | openai SDK | e2b |
+| | **LangChain** | | | |
+| 3 | Basic RAG | `level_03_basic_rag` | LangChain | e2b |
+| 4 | Advanced RAG | `level_04_advanced_rag` | LangChain | e4b |
+| 5 | Single Agent | `level_05_single_agent` | LangChain | e4b |
+| | **LangGraph** | | | |
+| 6 | Workflow Patterns | `level_06_workflow_patterns` | LangGraph | e2b+e4b |
+| 7 | Multi-Agent | `level_07_multi_agent` | LangGraph | e2b+e4b |
+| | **LangGraph (advanced)** | | | |
+| 8 | MCP | `level_08_mcp` | LangGraph+MCP | TBD |
+| 9 | Harness | `level_09_harness` | LangGraph | TBD |
+| 10 | Sub-Agents | `level_10_sub_agents` | LangGraph | TBD |
+| 11 | Skills | `level_11_skills` | LangGraph | TBD |
+| 12 | Autonomous | `level_12_autonomous` | LangGraph | TBD |
+
+## Architecture (Level 7 — Multi-Agent)
 
 4-agent loop controlled by LangGraph:
 
@@ -27,13 +54,13 @@ User Query
     ▼
 ┌──────────────┐  needs clarification  ┌──────────────┐
 │  Facilitator │ ◄──────────────────── │  User Input  │
-│ (qwen2.5:9b) │ ──────────────────►  │              │
+│(gemma4:e4b)  │ ──────────────────►  │              │
 └──────┬───────┘                       └──────────────┘
        │ enriched_prompt
        ▼
 ┌──────────────┐   can answer directly  ┌──────────────┐
 │  Synthesizer │ ──────────────────►    │  Validator   │
-│ (qwen2.5:2b) │                        │ (qwen2.5:9b) │
+│(gemma4:e2b)  │                        │(gemma4:e4b)  │
 └──────┬───────┘                        └──────┬───────┘
        │ needs retrieval                       │
        ▼                                       │ FAIL (avg < 80)
@@ -43,41 +70,16 @@ User Query
 └──────────────┘                          (max 3 loops)
 ```
 
-| Agent | Role | Model |
-|-------|------|-------|
-| **Facilitator** | Query understanding, enrichment, clarification questions | qwen2.5:9b (planner) |
-| **Synthesizer** | Direct answer or citation-grounded generation | qwen2.5:2b (executor) |
-| **Researcher** | Hybrid Search → Filter → Re-rank → Citation stitching | No LLM |
-| **Validator** | LLM-as-Judge on 4 axes: completeness, accuracy, relevance, faithfulness | qwen2.5:9b (planner) |
-
-> **Note:** Current model sizes are for testing. For production use, upgrade planner to `qwen2.5:27b`
-> and executor to `qwen2.5:9b`.
-
-### Retrieval Pipeline
-
-```
-Hybrid Search (BM25 + Semantic HNSW, alpha=0.5)
-    ↓
-Metadata Filter (source_type, min_score, etc.)
-    ↓
-Cross-Encoder Re-rank (ms-marco-MiniLM-L-6-v2)
-    ↓
-[Optional] ColBERT Late Interaction (top_k=10)
-    ↓
-Citation Stitching (NotebookLM style: preserve original_text)
-```
-
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| LLM | Ollama (qwen2.5:9b / qwen2.5:2b) |
-| Vision LLM | Ollama (qwen3-vl:8b, ingestion only) |
+| LLM | Ollama (gemma4:e2b / gemma4:e4b) |
 | Embedding | BAAI/bge-m3 (1024-dim, sentence-transformers, GPU) |
 | Vector DB | Weaviate 1.28 (Docker, external embedding) |
 | Agent Framework | LangGraph (StateGraph + MemorySaver) |
 | Re-ranker | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| UI | Streamlit (4 pages: Chat / Ingest / Tuning / Evaluation) |
+| UI | Reflex (Claude-inspired, Siemens teal `#009999`) |
 | Python | 3.12 |
 
 ## Prerequisites
@@ -87,19 +89,17 @@ Citation Stitching (NotebookLM style: preserve original_text)
 Install [Ollama](https://ollama.com/) and pull the required models:
 
 ```bash
-ollama pull qwen2.5:9b    # Facilitator / Validator (planner)
-ollama pull qwen2.5:2b    # Synthesizer (executor)
-ollama pull qwen3-vl:8b   # Vision — PDF/PPTX ingestion only
+ollama pull gemma4:e2b    # Levels 1-3, 6-7 executor
+ollama pull gemma4:e4b    # Levels 4-7 planner
 ```
 
 - Ollama listens at `http://127.0.0.1:11434` after startup
 - OpenAI-compatible API: `http://127.0.0.1:11434/v1`
-- Model names are configurable in `config.yaml` under `ollama.planner_model` / `ollama.executor_model`
+- Model names are configurable in each level's `config.yaml`
 
 > **VRAM note (8GB GPU):**
-> - qwen2.5:9b + qwen2.5:2b together consume ~70-80% of VRAM
-> - Vision LLM (qwen3-vl:8b) is only loaded during ingestion — unload with `ollama stop qwen3-vl:8b` when not in use
-> - BGE-M3 stays resident on GPU (~2.2GB)
+> - gemma4:e4b + gemma4:e2b together consume ~70-80% of VRAM
+> - BGE-M3 stays resident on GPU (~2.2GB, levels 3+ only)
 
 ### 2. Docker Desktop
 
@@ -116,6 +116,8 @@ Python 3.12 is required (3.13 is incompatible with ragatouille).
 ### Standard Installation
 
 ```bash
+cd levels/level_07_multi_agent
+
 # 1. Create virtual environment
 uv venv --python 3.12
 .venv\Scripts\activate     # Windows
@@ -134,6 +136,8 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 download and extraction. Install in stages to reduce load:
 
 ```bash
+cd levels/level_07_multi_agent
+
 # Step 1: Install PyTorch first (the main culprit, ~2GB)
 # For NVIDIA GPU with CUDA 12.1:
 uv pip install torch --index-url https://download.pytorch.org/whl/cu121 --link-mode=copy
@@ -144,7 +148,7 @@ uv pip install sentence-transformers --link-mode=copy
 uv pip install langgraph langchain-text-splitters --link-mode=copy
 uv pip install openai pydantic pyyaml --link-mode=copy
 uv pip install pymupdf python-pptx beautifulsoup4 --link-mode=copy
-uv pip install streamlit pandas pytest pytest-mock --link-mode=copy
+uv pip install reflex pandas pytest pytest-mock --link-mode=copy
 
 # Step 3: Register the project itself without re-resolving dependencies (near-zero CPU)
 uv pip install -e . --no-deps --link-mode=copy
@@ -153,6 +157,8 @@ uv pip install -e . --no-deps --link-mode=copy
 ### Start Weaviate and Verify Connection
 
 ```bash
+cd levels/level_07_multi_agent
+
 # Start Weaviate
 docker compose up -d
 
@@ -168,13 +174,14 @@ client.close()
 
 ## Usage
 
-### Launch Streamlit UI
+### Launch Reflex UI
 
 ```bash
-streamlit run src/ui/app.py
+cd levels/level_07_multi_agent
+reflex run
 ```
 
-Opens at `http://localhost:8501`.
+Opens at `http://localhost:3000`.
 
 ### Pages
 
@@ -198,42 +205,26 @@ Opens at `http://localhost:8501`.
 ## Project Structure
 
 ```
-src/
-├── models.py                  # Pydantic data models
-├── config.py                  # config.yaml → Settings loader
-├── ingestion/
-│   ├── loaders.py             # File loaders (all formats)
-│   ├── chunkers.py            # 6 chunking strategies + factory
-│   ├── embedder.py            # BGE-M3 embedding wrapper
-│   ├── vision_describer.py    # Vision LLM image → text
-│   └── pipeline.py            # Ingestion pipeline orchestrator
-├── retrieval/
-│   ├── weaviate_client.py     # Weaviate connection & CRUD
-│   ├── hybrid_search.py       # BM25 + Semantic search
-│   ├── metadata_filter.py     # Post-retrieval metadata filtering
-│   └── colbert_search.py      # ColBERT (optional)
-├── reranking/
-│   └── cross_encoder.py       # Cross-Encoder re-ranking
-├── generation/
-│   ├── llm_client.py          # Ollama client (planner/executor/vision)
-│   └── prompts.py             # All prompt templates
-├── agents/
-│   ├── state.py               # RAGState TypedDict
-│   ├── graph.py               # LangGraph StateGraph definition
-│   ├── facilitator.py         # Query understanding & enrichment
-│   ├── synthesizer.py         # Answer generation
-│   ├── researcher.py          # Retrieval & citation stitching
-│   └── validator.py           # LLM-as-Judge 4-axis scoring
-├── evaluation/
-│   ├── metrics.py             # Precision/Recall/MAP/MRR
-│   └── bm25_tuner.py          # BM25 k1/b grid search
-└── ui/
-    ├── app.py                 # Streamlit main app
-    └── pages/
-        ├── chat.py            # Chat page
-        ├── ingest.py          # Ingest page
-        ├── tuning.py          # BM25 tuning page
-        └── evaluation.py      # Evaluation page
+local-agentic-rag/
+├── levels/
+│   ├── level_01_prompt_only/           # raw openai SDK — bare LLM chat
+│   ├── level_02_prompt_engineering/    # raw openai SDK — CoT, few-shot, structured
+│   ├── level_03_basic_rag/            # LangChain — semantic search, Weaviate
+│   ├── level_04_advanced_rag/         # LangChain — hybrid search, re-ranking, PDF/PPTX
+│   ├── level_05_single_agent/         # LangChain — ReAct agent, tool use
+│   ├── level_06_workflow_patterns/    # LangGraph — Evaluator-Optimizer loop
+│   ├── level_07_multi_agent/          # LangGraph — 4 agents, Human-in-the-Loop ← main
+│   ├── level_08_mcp/                  # LangGraph + MCP tools (placeholder)
+│   ├── level_09_harness/              # context compaction, persistence (placeholder)
+│   ├── level_10_sub_agents/           # parallel subgraph spawning (placeholder)
+│   ├── level_11_skills/               # SKILL.md composable skills (placeholder)
+│   └── level_12_autonomous/           # scheduled tasks, CI/CD (placeholder)
+├── data/
+├── models/
+├── logs/
+├── plan.md
+├── CLAUDE.md
+└── README.md
 ```
 
 ## Configuration
@@ -243,17 +234,16 @@ All settings are centralized in `config.yaml`. Hardcoding is prohibited.
 ```python
 from src.config import get_config
 cfg = get_config()
-print(cfg.ollama.planner_model)    # qwen2.5:9b
+print(cfg.ollama.planner_model)    # gemma4:e4b
 print(cfg.retrieval.hybrid.alpha)  # 0.5
 ```
 
-Key settings:
+Key settings (Level 7):
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `ollama.planner_model` | Facilitator/Validator model | qwen2.5:9b |
-| `ollama.executor_model` | Synthesizer model | qwen2.5:2b |
-| `vision.model_name` | Vision LLM model | qwen3-vl:8b |
+| `ollama.planner_model` | Facilitator/Validator model | gemma4:e4b |
+| `ollama.executor_model` | Synthesizer model | gemma4:e2b |
 | `retrieval.hybrid.alpha` | BM25/Semantic balance (0=BM25, 1=Semantic) | 0.5 |
 | `retrieval.bm25.k1` | BM25 term frequency saturation | 1.2 |
 | `retrieval.bm25.b` | BM25 document length normalization | 0.75 |
@@ -279,6 +269,7 @@ Weaviate  ← storage + HNSW/BM25 search only
 ## Testing
 
 ```bash
+cd levels/level_07_multi_agent
 pytest tests/ -v
 ```
 
