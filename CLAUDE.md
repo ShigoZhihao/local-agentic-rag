@@ -138,14 +138,37 @@ Agents do NOT inherit from a base class. They are plain function-based modules.
 
 ## Running the App
 
+All levels use CLI only — no GUI.
+
+### Level 1 — Prompt Only
+```bash
+cd levels/level_01_prompt_only
+python main.py
+python main.py --model gemma4:e2b --temperature 0.5
+```
+
+### Level 2 — Prompt Engineering
+```bash
+cd levels/level_02_prompt_engineering
+python main.py
+python main.py --mode cot --model gemma4:e2b
+# Switch mode mid-session: type '/mode structured'
+```
+
+### Level 7 — Multi-Agent RAG
 ```bash
 cd levels/level_07_multi_agent
 
 # Start Weaviate
 docker compose up -d
 
-# Run Reflex UI
-reflex run
+# Chat (4-agent pipeline)
+python main.py chat
+python main.py chat --planner gemma4:e4b --executor gemma4:e2b
+
+# Ingest documents
+python main.py ingest path/to/doc.pdf
+python main.py ingest --vision path/to/slides.pptx path/to/notes.md
 ```
 
 ## Testing

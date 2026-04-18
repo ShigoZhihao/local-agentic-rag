@@ -1,13 +1,14 @@
+# Project-wide definition and dependency management via TOML.
+# Follows PEP 518 / PEP 621 — the structure and file name are standardized.
+# Main purpose: declare dependencies, build settings, and tool configuration.
+# Assumes uv as the package manager.
 [project]
-name = "level-01-prompt-only"
+name = "level_01_prompt_only"
 version = "0.1.0"
+description = "Minimal chatbot MVP — prompt only, no memory, no external data"
 requires-python = ">=3.11"
 dependencies = [
-    "openai>=1.50",
-    "pydantic>=2.9",
-    "pyyaml>=6.0",
-    "reflex>=0.6",
-    "psutil>=6.0",
-    "pynvml>=11.0",
-    "requests>=2.31",
+    "openai",
+    "pydantic",
+    "pyyaml"
 ]

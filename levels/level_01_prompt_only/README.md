@@ -2,18 +2,18 @@
 
 **Core loop:** `user input → LLM → output`
 
-The simplest possible agent. No tools, no retrieval, no external memory.
-The only levers are the system prompt and model parameters.
+The simplest possible chatbot. No memory, no prompt engineering, no external data.
+Build a working MVP and confirm what it can and cannot do.
 
-**Model:** `gemma4:e2b` (thinking model — reasoning is shown in a collapsible panel)
+**Model:** `gemma4:e4b`
 
 ## What you learn here
 
-- How an LLM call works at the API level (raw openai SDK)
-- How conversation history (message list) creates the illusion of memory
-- How much the system prompt alone shapes behaviour
-- How thinking models expose their reasoning via `<think>` tags
-- Claude-inspired chat UI with Siemens brand colour
+- Connecting to Ollama via the OpenAI-compatible API
+- Loading config from YAML with Pydantic type validation
+- Streaming responses token by token
+- Parsing `<think>` tags from reasoning models
+- The baseline limitations: no memory, no context, no tools
 
 ## Setup
 
@@ -24,31 +24,30 @@ uv venv
 uv pip install -e .
 ```
 
-Make sure Ollama is running and the model is available:
-
 ```bash
-ollama pull gemma4:e2b
+ollama pull gemma4:e4b
 ollama serve
 ```
 
 ## Run
 
 ```bash
-reflex run
+python main.py
 ```
 
 ## What to try
 
-1. Ask a factual question. Note the model answers from its training data only — no external lookup.
-2. Expand the **"Thinking"** step to see the model's internal reasoning process.
-3. Edit the system prompt in the sidebar (e.g. "Answer only in Japanese") and send the next message.
-4. Ask something the model doesn't know (recent events, your personal data). It will hallucinate or say it doesn't know. **This is the motivation for Level 3 (RAG).**
+1. Ask a simple question and observe the streamed response.
+2. Ask a follow-up question — notice the model has no memory of the previous turn.
+3. Ask something that requires reasoning — observe the `<think>` section if the model supports it.
+4. Type `quit` or press `Ctrl+C` to exit.
 
 ## What this level intentionally lacks
 
 | Missing | Added at |
 |---------|----------|
-| Better prompts (CoT, few-shot) | Level 2 |
+| Conversation memory | Level 2 |
+| Prompt engineering (CoT, few-shot) | Level 2 |
 | External knowledge (documents) | Level 3 |
 | Hybrid search, re-ranking | Level 4 |
 | Tool use (ReAct agent) | Level 5 |
@@ -59,15 +58,10 @@ reflex run
 
 ```
 level_01_prompt_only/
-├── rxconfig.py         # Reflex configuration
-├── app/
-│   ├── app.py          # Reflex chat UI (pages + components)
-│   └── state.py        # Reactive state management
+├── main.py             # Entry point, user input loop
 ├── src/
 │   ├── config.py       # Pydantic config loader
-│   ├── llm_client.py   # OpenAI-compatible wrapper with <think> tag parsing
-│   ├── ollama_models.py # Ollama model listing & context window
-│   └── metrics.py      # CPU/GPU/VRAM/RAM resource metrics
-├── config.yaml         # Model & system prompt settings
-└── pyproject.toml      # Dependencies: openai, pydantic, pyyaml, reflex
+│   └── llm_client.py   # OpenAI-compatible Ollama wrapper with <think> parsing
+├── config.yaml         # Model, base_url, temperature, system_prompt
+└── pyproject.toml
 ```
