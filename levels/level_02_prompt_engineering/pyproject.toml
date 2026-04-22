@@ -1,13 +1,11 @@
 [project]
-name = "level-02-prompt-engineering"
+name = "level_02_prompt_engineering"
 version = "0.1.0"
+description = "Minimal chatbot MVP — consider prompt engineering, with memory, with rewriter, no external data"
 requires-python = ">=3.11"
 dependencies = [
-    "openai>=1.50",
-    "pydantic>=2.9",
-    "pyyaml>=6.0",
-    "reflex>=0.6",
-    "psutil>=6.0",
-    "pynvml>=11.0",
-    "requests>=2.31",
+    "openai",
+    "pydantic",
+    "pyyaml",
+    "pyreadline3",
 ]

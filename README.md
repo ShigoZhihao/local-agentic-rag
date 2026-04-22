@@ -1,86 +1,111 @@
-# Agentic RAG System
+# Agentic RAG — 12-Level Hands-On Learning Path
 
-**[日本語版はこちら](README_JA.md)**
+**[日本語版はこちら](README_JP.md)**
+
+---
+
+> **About this repository**
+>
+> This repository is a personal hands-on learning project by the author ([@ShigoZhihao](https://github.com/ShigoZhihao)). The goal is to internalize how modern agentic RAG systems are built by implementing them from scratch in 12 progressive levels — from a bare LLM call to a fully autonomous multi-agent system.
+>
+> - **All code is written by the author.** Every `main.py`, module, and test is hand-written, typo-for-typo, as part of the learning process. No code generation, no copy-paste shortcuts.
+> - **All README documentation is authored by Claude (Anthropic).** The author discusses design, trade-offs, and bugs with Claude; Claude then structures the findings into the README files you see in each level. This division keeps the *engineering* human-owned and the *documentation* consistent across levels.
 
 ---
 
 > **Acknowledgements**
 >
-> This project is inspired by and built upon the concepts taught in the
+> This project is inspired by the concepts taught in the
 > **[Retrieval Augmented Generation (RAG) Course](https://www.deeplearning.ai/courses/retrieval-augmented-generation-rag/)**
-> by [DeepLearning.AI](https://www.deeplearning.ai/).
->
-> A huge thank you to the DeepLearning.AI team for making such an outstanding course freely available.
-> The depth and clarity of the curriculum made it possible to build a production-grade RAG system from scratch.
+> by [DeepLearning.AI](https://www.deeplearning.ai/). A huge thank you to the DeepLearning.AI team for making such an outstanding course freely available.
 
 ---
 
-A progressive, 12-level learning path from bare LLM chat to a fully autonomous
-agent system. Zero API costs, 100% local (Ollama + Weaviate).
+## Background and Purpose
 
-**Models:** Ollama `gemma4:e2b` / `gemma4:e4b` (thinking models)
-**UI:** Claude-inspired chat interface with Siemens brand colour (`#009999`)
+Modern AI systems are evolving from **single-turn LLM calls** toward **multi-agent systems** that search, reason, validate, and act autonomously. Understanding this stack top-to-bottom requires building each layer yourself — there is no shortcut.
 
-## Levels
+This repository breaks that journey into **12 self-contained levels**, each a working MVP. Every level:
 
-Each level is **self-contained** with its own `src/`, `pyproject.toml`, and `README.md`.
+- Has its own `src/`, `pyproject.toml`, `config.yaml`, and `README.md`
+- Runs independently — no cross-level imports
+- Adds exactly **one new concept** on top of the previous level
+- Runs 100% locally (Ollama + Weaviate), zero API cost
 
-| | Level | Folder | Framework | Model |
-|-|-------|--------|-----------|-------|
-| | **raw openai SDK** | | | |
-| 1 | Prompt Only | `level_01_prompt_only` | openai SDK | e2b |
-| 2 | Prompt Engineering | `level_02_prompt_engineering` | openai SDK | e2b |
-| | **LangChain** | | | |
-| 3 | Basic RAG | `level_03_basic_rag` | LangChain | e2b |
-| 4 | Advanced RAG | `level_04_advanced_rag` | LangChain | e4b |
-| 5 | Single Agent | `level_05_single_agent` | LangChain | e4b |
-| | **LangGraph** | | | |
-| 6 | Workflow Patterns | `level_06_workflow_patterns` | LangGraph | e2b+e4b |
-| 7 | Multi-Agent | `level_07_multi_agent` | LangGraph | e2b+e4b |
-| | **LangGraph (advanced)** | | | |
-| 8 | MCP | `level_08_mcp` | LangGraph+MCP | TBD |
-| 9 | Harness | `level_09_harness` | LangGraph | TBD |
-| 10 | Sub-Agents | `level_10_sub_agents` | LangGraph | TBD |
-| 11 | Skills | `level_11_skills` | LangGraph | TBD |
-| 12 | Autonomous | `level_12_autonomous` | LangGraph | TBD |
+The curriculum progresses from raw OpenAI-compatible SDK calls (L1–L2), through LangChain-based RAG (L3–L5), into LangGraph workflows and multi-agent loops (L6–L7), and finally into advanced agent harness techniques (L8–L12).
 
-## Architecture (Level 7 — Multi-Agent)
+### Current progress
 
-4-agent loop controlled by LangGraph:
+| Status | Levels |
+|---|---|
+| ✅ Implemented | Level 1, Level 2 |
+| 🚧 Planned | Level 3 through Level 12 |
 
-```
-User Query
-    │
-    ▼
-┌──────────────┐  needs clarification  ┌──────────────┐
-│  Facilitator │ ◄──────────────────── │  User Input  │
-│(gemma4:e4b)  │ ──────────────────►  │              │
-└──────┬───────┘                       └──────────────┘
-       │ enriched_prompt
-       ▼
-┌──────────────┐   can answer directly  ┌──────────────┐
-│  Synthesizer │ ──────────────────►    │  Validator   │
-│(gemma4:e2b)  │                        │(gemma4:e4b)  │
-└──────┬───────┘                        └──────┬───────┘
-       │ needs retrieval                       │
-       ▼                                       │ FAIL (avg < 80)
-┌──────────────┐                               │
-│  Researcher  │                               ▼
-│  (no LLM)   │ ──── citations ──────► Facilitator
-└──────────────┘                          (max 3 loops)
-```
+---
 
-## Tech Stack
+## Level comparison
+
+### Overview
+
+| # | Level | Folder | Framework | Model | MVP does this |
+|---|---|---|---|---|---|
+| 1 | Prompt Only | `level_01_prompt_only` | openai SDK | gemma4:e4b | Stateless single-turn chat — user typed → LLM → streamed answer |
+| 2 | Prompt Engineering | `level_02_prompt_engineering` | openai SDK | gemma4:e4b | Multi-turn chat + Clarifier→Rewriter pipeline for prompt improvement |
+| 3 | Basic RAG | `level_03_basic_rag` | LangChain | gemma4:e2b | Semantic search over local docs via Weaviate |
+| 4 | Advanced RAG | `level_04_advanced_rag` | LangChain | gemma4:e4b | Hybrid search (BM25 + semantic) + re-ranking + PDF/PPTX ingest |
+| 5 | Single Agent | `level_05_single_agent` | LangChain | gemma4:e4b | ReAct-style agent with tool use |
+| 6 | Workflow Patterns | `level_06_workflow_patterns` | LangGraph | e2b+e4b | Evaluator-Optimizer loop explicitly modeled as a state graph |
+| 7 | Multi-Agent | `level_07_multi_agent` | LangGraph | e2b+e4b | 4-agent loop (Facilitator / Synthesizer / Researcher / Validator) with HITL |
+| 8 | MCP | `level_08_mcp` | LangGraph + MCP | TBD | External tools via Model Context Protocol |
+| 9 | Harness | `level_09_harness` | LangGraph | TBD | Context compaction, persistence, session management |
+| 10 | Sub-Agents | `level_10_sub_agents` | LangGraph | TBD | Parallel subgraph spawning for decomposable tasks |
+| 11 | Skills | `level_11_skills` | LangGraph | TBD | Composable skill units (`SKILL.md` pattern) |
+| 12 | Autonomous | `level_12_autonomous` | LangGraph | TBD | Scheduled tasks + CI/CD integration |
+
+### Implemented levels — defined functions
+
+**Level 1** (`level_01_prompt_only`)
+
+| Module | Function / Class | Purpose |
+|---|---|---|
+| `src/config.py` | `OllamaConfig`, `Config`, `get_config()` | YAML → Pydantic config loading |
+| `src/llm_client.py` | `create_client(cfg)` | Builds an OpenAI client pointing at Ollama |
+| `src/llm_client.py` | `stream_response(client, cfg, message)` | Streaming response with state-machine-based `<think>` parsing |
+| `main.py` | `main()` | Single `while True` loop; stateless per turn |
+
+**Level 2** (`level_02_prompt_engineering`)
+
+| Module | Function / Class | Purpose |
+|---|---|---|
+| `src/config.py` | `OllamaConfig`, `Config`, `get_config()` | Same as L1 |
+| `src/llm_client.py` | `create_client(cfg)` | Same as L1 |
+| `src/llm_client.py` | `response(client, cfg, message)` | **New.** Non-streaming completion; strips `<think>` via `re.sub` |
+| `src/llm_client.py` | `stream_response(client, cfg, message)` | Same as L1 |
+| `src/prompts.py` | `MAIN_SYSTEM` | Main LLM persona + hard constraints |
+| `src/prompts.py` | `CLARIFIER_SYSTEM` | Instructs Clarifier to emit `Q1/Q2/Q3` |
+| `src/prompts.py` | `REWRITER_SYSTEM` | Instructs Rewriter to combine Q&A pairs without broadening scope |
+| `main.py` | `main()` | Outer conversation loop + inner improvement loop |
+| `main_copy.py` | `main()` | Experimental silent auto-improve variant |
+
+Levels 3–12: function inventory will be added as each level is implemented.
+
+---
+
+## Target tech stack (by Level 7)
 
 | Component | Technology |
 |-----------|-----------|
-| LLM | Ollama (gemma4:e2b / gemma4:e4b) |
+| LLM | Ollama (gemma4:e2b / gemma4:e4b, thinking models) |
 | Embedding | BAAI/bge-m3 (1024-dim, sentence-transformers, GPU) |
 | Vector DB | Weaviate 1.28 (Docker, external embedding) |
 | Agent Framework | LangGraph (StateGraph + MemorySaver) |
 | Re-ranker | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| UI | Reflex (Claude-inspired, Siemens teal `#009999`) |
 | Python | 3.12 |
+| UI | CLI only (no GUI) |
+
+Levels 1–2 use only `openai`, `pydantic`, `pyyaml` (and `pyreadline3` at L2).
+
+---
 
 ## Prerequisites
 
@@ -89,193 +114,74 @@ User Query
 Install [Ollama](https://ollama.com/) and pull the required models:
 
 ```bash
-ollama pull gemma4:e2b    # Levels 1-3, 6-7 executor
-ollama pull gemma4:e4b    # Levels 4-7 planner
+ollama pull gemma4:e2b    # executor — Levels 3 and 6+
+ollama pull gemma4:e4b    # planner — Levels 1, 2, 4+
 ```
 
 - Ollama listens at `http://127.0.0.1:11434` after startup
 - OpenAI-compatible API: `http://127.0.0.1:11434/v1`
 - Model names are configurable in each level's `config.yaml`
 
-> **VRAM note (8GB GPU):**
-> - gemma4:e4b + gemma4:e2b together consume ~70-80% of VRAM
-> - BGE-M3 stays resident on GPU (~2.2GB, levels 3+ only)
+### 2. Docker Desktop (Level 3+)
 
-### 2. Docker Desktop
-
-Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+Needed for Weaviate. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ### 3. Python 3.12
 
-Python 3.12 is required (3.13 is incompatible with ragatouille).
+Python 3.12 is required (3.13 is incompatible with some downstream dependencies used in higher levels).
 
-## Setup
+---
 
-> **If `uv pip install -e .` causes 97%+ CPU usage, use the low-load installation steps below.**
+## Getting started
 
-### Standard Installation
-
-```bash
-cd levels/level_07_multi_agent
-
-# 1. Create virtual environment
-uv venv --python 3.12
-.venv\Scripts\activate     # Windows
-# source .venv/bin/activate  # macOS/Linux
-
-# 2. Install dependencies
-uv pip install -e . --link-mode=copy
-
-# 3. Pre-download BGE-M3 embedding model (~1.5GB)
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
-```
-
-### Low-Load Installation — Avoiding 97%+ CPU
-
-`uv pip install -e .` resolves all dependencies at once, causing high CPU usage during PyTorch
-download and extraction. Install in stages to reduce load:
+Every level is self-contained. Pick one and run it:
 
 ```bash
-cd levels/level_07_multi_agent
-
-# Step 1: Install PyTorch first (the main culprit, ~2GB)
-# For NVIDIA GPU with CUDA 12.1:
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121 --link-mode=copy
-
-# Step 2: Install remaining packages in small batches
-uv pip install weaviate-client --link-mode=copy
-uv pip install sentence-transformers --link-mode=copy
-uv pip install langgraph langchain-text-splitters --link-mode=copy
-uv pip install openai pydantic pyyaml --link-mode=copy
-uv pip install pymupdf python-pptx beautifulsoup4 --link-mode=copy
-uv pip install reflex pandas pytest pytest-mock --link-mode=copy
-
-# Step 3: Register the project itself without re-resolving dependencies (near-zero CPU)
-uv pip install -e . --no-deps --link-mode=copy
+cd levels/level_01_prompt_only
+uv venv
+.venv/Scripts/activate          # Windows
+# source .venv/bin/activate     # macOS/Linux
+uv pip install -e .
+python main.py
 ```
 
-### Start Weaviate and Verify Connection
+For level-specific setup and usage, see each level's own `README.md`.
 
-```bash
-cd levels/level_07_multi_agent
+---
 
-# Start Weaviate
-docker compose up -d
-
-# Verify connection
-python -c "
-from src.retrieval.weaviate_client import get_client, ensure_collection
-client = get_client()
-ensure_collection(client)
-print('Weaviate OK')
-client.close()
-"
-```
-
-## Usage
-
-### Launch Reflex UI
-
-```bash
-cd levels/level_07_multi_agent
-reflex run
-```
-
-Opens at `http://localhost:3000`.
-
-### Pages
-
-| Page | Description |
-|------|-------------|
-| **Chat** | Agentic RAG chat. Agents search, answer, and validate automatically. Displays citations and validation scores. |
-| **Ingest** | Upload documents (TXT, MD, HTML, PY, PDF, PPTX). Vision LLM toggle for PDF/PPTX. |
-| **BM25 Tuning** | Grid search over k1/b parameters. Input evaluation data in JSONL format. |
-| **Evaluation** | Compute Precision@k / Recall@k / MAP@k / MRR@k with per-query drill-down. |
-
-### Supported Document Types
-
-| Extension | Chunking Strategy | Notes |
-|-----------|------------------|-------|
-| `.txt`, `.md` | RecursiveChunker (512 chars) | Text splitting |
-| `.html` | HTMLChunker | Split on p, h1-h4, li tags |
-| `.py` | PythonChunker | Split on def / class boundaries |
-| `.pdf` | VisualChunker | 1 page = 1 chunk + optional Vision LLM |
-| `.pptx` | VisualChunker | 1 slide = 1 chunk + optional Vision LLM |
-
-## Project Structure
+## Project layout
 
 ```
 local-agentic-rag/
-├── levels/
-│   ├── level_01_prompt_only/           # raw openai SDK — bare LLM chat
-│   ├── level_02_prompt_engineering/    # raw openai SDK — CoT, few-shot, structured
-│   ├── level_03_basic_rag/            # LangChain — semantic search, Weaviate
-│   ├── level_04_advanced_rag/         # LangChain — hybrid search, re-ranking, PDF/PPTX
-│   ├── level_05_single_agent/         # LangChain — ReAct agent, tool use
-│   ├── level_06_workflow_patterns/    # LangGraph — Evaluator-Optimizer loop
-│   ├── level_07_multi_agent/          # LangGraph — 4 agents, Human-in-the-Loop ← main
-│   ├── level_08_mcp/                  # LangGraph + MCP tools (placeholder)
-│   ├── level_09_harness/              # context compaction, persistence (placeholder)
-│   ├── level_10_sub_agents/           # parallel subgraph spawning (placeholder)
-│   ├── level_11_skills/               # SKILL.md composable skills (placeholder)
-│   └── level_12_autonomous/           # scheduled tasks, CI/CD (placeholder)
-├── data/
-├── models/
-├── logs/
-├── plan.md
-├── CLAUDE.md
-└── README.md
+├── README.md                         # this file
+├── README_JP.md                      # Japanese version
+├── CLAUDE.md                         # coding conventions for Claude Code / Copilot
+├── archive/
+│   └── plan.md                       # original planning doc (archived)
+└── levels/
+    ├── level_01_prompt_only/         # ✅ openai SDK — bare LLM chat
+    ├── level_02_prompt_engineering/  # ✅ openai SDK — Clarifier→Rewriter
+    ├── level_03_basic_rag/           # 🚧 LangChain — semantic search, Weaviate
+    ├── level_04_advanced_rag/        # 🚧 LangChain — hybrid search, re-ranking
+    ├── level_05_single_agent/        # 🚧 LangChain — ReAct agent, tool use
+    ├── level_06_workflow_patterns/   # 🚧 LangGraph — Evaluator-Optimizer
+    ├── level_07_multi_agent/         # 🚧 LangGraph — 4 agents, HITL
+    ├── level_08_mcp/                 # 🚧 LangGraph + MCP
+    ├── level_09_harness/             # 🚧 context compaction, persistence
+    ├── level_10_sub_agents/          # 🚧 parallel subgraph spawning
+    ├── level_11_skills/              # 🚧 composable skills
+    └── level_12_autonomous/          # 🚧 scheduled tasks, CI/CD
 ```
 
-## Configuration
+---
 
-All settings are centralized in `config.yaml`. Hardcoding is prohibited.
+## Authoring notes
 
-```python
-from src.config import get_config
-cfg = get_config()
-print(cfg.ollama.planner_model)    # gemma4:e4b
-print(cfg.retrieval.hybrid.alpha)  # 0.5
-```
+- **Code**: author (human). Written from scratch as a learning exercise, reviewed by Claude for bugs and design.
+- **READMEs**: Claude (Anthropic model). Structured after discussion with the author on what each level intentionally includes and excludes.
+- **Commits**: co-authored, with Claude as co-author where applicable.
 
-Key settings (Level 7):
-
-| Key | Description | Default |
-|-----|-------------|---------|
-| `ollama.planner_model` | Facilitator/Validator model | gemma4:e4b |
-| `ollama.executor_model` | Synthesizer model | gemma4:e2b |
-| `retrieval.hybrid.alpha` | BM25/Semantic balance (0=BM25, 1=Semantic) | 0.5 |
-| `retrieval.bm25.k1` | BM25 term frequency saturation | 1.2 |
-| `retrieval.bm25.b` | BM25 document length normalization | 0.75 |
-| `reranking.top_k` | Results returned after re-ranking | 5 |
-| `agents.max_loop_count` | Max Validator→Facilitator feedback loops | 3 |
-| `agents.validation_threshold` | Validator pass threshold (avg score) | 80 |
-
-## How Embeddings Work
-
-Weaviate does **not** generate vectors itself (`DEFAULT_VECTORIZER_MODULE: none`).
-
-```
-Python (src/ingestion/embedder.py)
-  └── sentence-transformers (BAAI/bge-m3, GPU-accelerated)
-        ↓ 1024-dim vectors
-Weaviate  ← storage + HNSW/BM25 search only
-```
-
-- **Ingestion**: `Embedder.embed_texts()` → stored in Weaviate
-- **Query time**: `Embedder.embed_query()` → passed to Weaviate hybrid search
-- Downloaded automatically from HuggingFace on first run (~1.5GB)
-
-## Testing
-
-```bash
-cd levels/level_07_multi_agent
-pytest tests/ -v
-```
-
-- Unit tests: no external dependencies (Weaviate and Ollama are mocked)
-- Integration tests: require Docker + downloaded models
-- Fixtures: `tests/conftest.py`
+---
 
 ## License
 

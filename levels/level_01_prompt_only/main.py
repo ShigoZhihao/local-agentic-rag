@@ -27,11 +27,14 @@ def main() -> None:
         try:
             user_input = input("You: ").strip()
         except KeyboardInterrupt:
-            print("\nBye!")
+            print("\nSee you next time!")
             break
 
-        if not user_input or user_input.lower() == "quit":
-            print("Bye!")
+        if not user_input:
+            continue 
+        
+        if user_input.lower() == "quit":
+            print("See you next time!")
             break   
 
 

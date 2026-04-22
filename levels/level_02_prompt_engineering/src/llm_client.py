@@ -1,143 +1,136 @@
-"""Thin OpenAI-compatible streaming client for Ollama.
+"""Ollama client.
 
-Core loop at this level:
-    user input → LLM → output (streamed token by token)
-
-Thinking support:
-    gemma4 models emit <think>...</think> before the answer.
-    StreamingChat yields (state, token) tuples so the UI can
-    route thinking tokens to a separate panel.
+Approach:
+  Ollama exposes an OpenAI-compatible API, so it can be called with the openai library.
+  Streaming is also supported.
 """
-
-import logging
-from typing import Iterator
-
 from openai import OpenAI
-
-from src.config import OllamaConfig
-
-logger = logging.getLogger(__name__)
-
+from .config import OllamaConfig
+import re
 
 def create_client(cfg: OllamaConfig) -> OpenAI:
-    """Create an OpenAI client pointed at a local Ollama instance."""
+    """Create an OpenAI client pointed at the Ollama server.
+
+    Args:
+        cfg: Ollama connection config.
+
+    Returns:
+        An OpenAI client configured to use the Ollama base URL.
+    """
     return OpenAI(base_url=cfg.base_url, api_key="ollama")
 
-
-class StreamingChat:
-    """Streams (state, token) tuples from Ollama.
-
-    *state* is ``"thinking"`` while inside ``<think>...</think>``
-    and ``"answering"`` otherwise.
-
-    Usage::
-
-        stream = StreamingChat(client, cfg, messages)
-        for state, token in stream:
-            if state == "thinking":
-                thinking_panel.write(token)
-            else:
-                answer_panel.write(token)
-        tokens_in  = stream.prompt_tokens
-        tokens_out = stream.completion_tokens
-    """
-
-    def __init__(
-        self,
+def response(
         client: OpenAI,
         cfg: OllamaConfig,
-        messages: list[dict[str, str]],
-    ) -> None:
-        self.prompt_tokens: int = 0
-        self.completion_tokens: int = 0
-        try:
-            self._response = client.chat.completions.create(
-                model=cfg.model,
-                messages=messages,  # type: ignore[arg-type]
-                temperature=cfg.temperature,
-                max_tokens=cfg.max_tokens,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-        except Exception as e:
-            logger.error("Failed to start streaming: %s", e)
-            raise
+        message: list[dict[str, str]],
+) -> str:
+    """Send a message to Ollama and receive the full response as a string.
 
-    def __iter__(self) -> Iterator[tuple[str, str]]:
-        """Yield ``(state, token)`` tuples.
+    Args:
+        client: OpenAI client pointed at the Ollama server.
+        cfg: Ollama config (model name, temperature, etc.).
+        message: Messages to send. e.g. [{"role": "user", "content": "Hello!"}]
 
-        Parses ``<think>``/``</think>`` tags to separate thinking from answer.
-        """
-        buf = ""          # small lookahead buffer for tag detection
-        state = "init"    # init → thinking → answering
-        try:
-            for chunk in self._response:
-                content = (
-                    chunk.choices[0].delta.content
-                    if chunk.choices
-                    else None
-                )
-                if chunk.usage:
-                    self.prompt_tokens = chunk.usage.prompt_tokens
-                    self.completion_tokens = chunk.usage.completion_tokens
-                if not content:
-                    continue
+    Returns:
+        The full response string.
+    """
+    response_text = client.chat.completions.create(
+        model = cfg.model,
+        messages = message,
+        temperature = cfg.temperature,
+        max_tokens = cfg.max_tokens,
+    )
+    text = (response_text.choices[0].message.content or "") if response_text.choices else "" # For the case when API responses content=None
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()  # Remove <think> sections from the final response.
 
-                buf += content
+def stream_response(
+        client: OpenAI,
+        cfg: OllamaConfig,
+        message: list[dict[str, str]],
+) -> str:
+    """Send a message to Ollama and receive the response token by token via streaming.
 
-                while buf:
-                    if state == "init":
-                        # Look for <think> at the very start
-                        if buf.startswith("<think>"):
-                            buf = buf[7:]
-                            state = "thinking"
-                        elif len(buf) < 7 and "<think>".startswith(buf):
-                            # Might be partial tag — wait for more tokens
-                            break
-                        else:
-                            # No <think> tag: model answered directly
-                            state = "answering"
+    Args:
+        client: OpenAI client pointed at the Ollama server.
+        cfg: Ollama config (model name, temperature, etc.).
+        message: Messages to send. e.g. [{"role": "user", "content": "Hello!"}]
 
-                    elif state == "thinking":
-                        end_idx = buf.find("</think>")
-                        if end_idx != -1:
-                            # Flush everything before </think>
-                            if end_idx > 0:
-                                yield ("thinking", buf[:end_idx])
-                            buf = buf[end_idx + 8:]
-                            state = "answering"
-                        elif "</think>".startswith(buf[-7:]) and len(buf) <= 8:
-                            # Partial closing tag at end — wait
-                            break
-                        else:
-                            # Check if partial </think> at tail
-                            safe = self._flush_safe(buf, "</think>")
-                            if safe:
-                                yield ("thinking", safe)
-                                buf = buf[len(safe):]
-                            else:
-                                break
+    Returns:
+        The full response string (thinking section excluded).
+    """
+    # Use the Chat Completions API with streaming enabled.
+    response = client.chat.completions.create(
+        model = cfg.model,
+        messages = message,
+        temperature = cfg.temperature,
+        max_tokens = cfg.max_tokens,
+        stream = True,
+    )
 
-                    else:  # answering
-                        yield ("answering", buf)
-                        buf = ""
+    # Receive the stream and display tokens as they arrive.
+    buf = ""
+    state = "init"
+    answer_tokens: list[str] = []
 
-            # Flush remaining buffer
-            if buf:
-                yield (state if state != "init" else "answering", buf)
+    for chunk in response:
+        token = chunk.choices[0].delta.content if chunk.choices else None
+        if not token:
+            continue
+        buf += token
 
-        except Exception as e:
-            logger.error("Streaming interrupted: %s", e)
-            raise
+        # --- <think> tag state machine ---
+        # "init": determine whether the first tokens contain <think>
+        if state == "init":
+            if "<think>" in buf:
+                # Strip the <think> tag and switch to thinking mode.
+                buf = buf.replace("<think>", "")
+                state = "thinking"
+                # Print a dim "[thinking]" label at the start of the thinking section.
+                # \033[2m = ANSI dim, \033[0m = reset.
+                # end="" and flush=True print immediately without a newline.
+                # Reference: https://qiita.com/arakaki_tokyo/items/e54d95911ec7a22a7846
+                print("\033[2m[thinking]\033[0m ", end="", flush=True)
 
-    @staticmethod
-    def _flush_safe(buf: str, tag: str) -> str:
-        """Return the prefix of *buf* that cannot be part of a partial *tag*.
+            elif len(buf) > 7:
+                # No <think> tag after 7 characters — switch directly to answering mode.
+                state = "answering"
+                print(buf, end="", flush=True)
+                answer_tokens.append(buf)
+                buf = ""
 
-        If the tail of *buf* is a prefix of *tag*, we hold it back so we
-        can detect the full tag on the next iteration.
-        """
-        for i in range(min(len(tag), len(buf)), 0, -1):
-            if buf.endswith(tag[:i]):
-                return buf[: -i]
-        return buf
+        # "thinking": display tokens in dim color until </think> arrives
+        elif state == "thinking":
+            if "</think>" in buf:
+                # Split on </think>: display everything before it, then switch to answering.
+                before, _, after = buf.partition("</think>")
+                if before:
+                    print(f"\033[2m{before}\033[0m ", end="", flush=True)
+                print("\n", end="", flush=True)  # blank line to separate thinking from answer
+
+                buf = ""
+                state = "answering"
+                # If there is content after </think>, display and record it immediately.
+                if after:
+                    print(after, end="", flush=True)
+                    answer_tokens.append(after)
+
+            else:
+                print(f"\033[2m{buf}\033[0m ", end="", flush=True)
+                buf = ""
+
+        # "answering": print tokens as-is and record them
+        else:
+            print(buf, end="", flush=True)
+            # Append to answer_tokens so the full response can be returned at the end.
+            answer_tokens.append(buf)
+            buf = ""
+
+    # Flush any remaining content in the buffer after the stream ends.
+    if buf:
+        print(buf, end="", flush=True)
+        if state != "thinking":
+            answer_tokens.append(buf)
+
+    print()  # final newline
+
+    return "".join(answer_tokens)
